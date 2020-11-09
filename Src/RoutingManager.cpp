@@ -270,15 +270,16 @@ void RoutingManager::_ProcessStaleRoutes()
     auto remCnt=(int)((float)expCnt/100.0f*(float)mgPercent);
     if(remCnt<1)
         remCnt=1;
+    auto curMark=curTime.load();
     while(remCnt>0)
     {
         auto tIT=pendingExpires.begin();
-        if(curTime.load()<tIT->first)
+        if(curMark<tIT->first)
         {
-            logger.Info()<<"time diff for next mark: "<<tIT->first-curTime.load()<<std::endl;
+            logger.Info()<<"time diff for next mark: "<<tIT->first-curMark<<std::endl;
             return;
         }
-        logger.Info()<<"Evaluating ip: "<<tIT->second<<" with expire mark: "<<tIT->first<<std::endl;
+        logger.Info()<<"Evaluating ip: "<<tIT->second<<" with expire mark: "<<tIT->first<<" current time mark: "<<curMark<<std::endl;
         //check time mark is valid
         auto aIT=activeRoutes.find(tIT->second);
         if(aIT==activeRoutes.end()||aIT->second>tIT->first)
@@ -286,7 +287,7 @@ void RoutingManager::_ProcessStaleRoutes()
         else
         {
             _ProcessRoute(aIT->first,false,false); //commence route removal
-            logger.Info()<<"Removing slate routing rule for: "<<aIT->first<<" with expite mark: "<<aIT->second<<std::endl;
+            logger.Info()<<"Removing expired routing rule for: "<<aIT->first<<" with expite mark: "<<aIT->second<<std::endl;
             _ProcessRoute(aIT->first,true,false); //commence blackhole route removal
             activeRoutes.erase(aIT); //remove from active routes
         }
