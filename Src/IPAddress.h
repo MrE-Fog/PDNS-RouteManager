@@ -23,6 +23,7 @@ class IPAddress
 
         void ToSA(void * const targetSA) const;
 
+        size_t GetHashCode() const;
         bool Equals(const IPAddress &other) const;
         bool Less(const IPAddress &other) const;
         bool Greater(const IPAddress &other) const;
@@ -46,5 +47,7 @@ class IPAddress
         };
         const RawIP ip;
 };
+
+namespace std { template<> struct hash<IPAddress>{ size_t operator()(const IPAddress &target) const {return target.GetHashCode();}}; }
 
 #endif // IPADDRESS_H

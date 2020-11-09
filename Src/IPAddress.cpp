@@ -88,6 +88,23 @@ void IPAddress::ToSA(void* const targetSA) const
     }
 }
 
+size_t IPAddress::GetHashCode() const
+{
+    int rSz=sizeof(size_t);
+    size_t result={};
+    result^=isValid;
+    result^=(isV6<<8);
+    int shift=rSz-1;
+    for(auto i=0;i<IP_ADDR_LEN;++i)
+    {
+        result^=(((size_t)ip.data[i])<<(8*shift));
+        shift--;
+        if(shift<0)
+          shift=rSz-1;
+    }
+    return result;
+}
+
 bool IPAddress::Equals(const IPAddress& other) const
 {
     return isValid==other.isValid && isV6==other.isV6 && std::memcmp(ip.data,other.ip.data,IP_ADDR_LEN)==0;
