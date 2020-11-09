@@ -21,7 +21,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
 
         std::mutex opLock;
         std::atomic<bool> shutdownPending;
-        int socket;
+        int sock;
     public:
         RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTtl, const int mgIntervalSec, const int mgPercent);
         //WorkerBase
