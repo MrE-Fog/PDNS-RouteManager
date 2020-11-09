@@ -9,6 +9,7 @@ addons:
   apt:
     packages:
     - libprotobuf-dev
+    - protobuf-compiler
 
 stage_test: &test
   stage: "Build test"
