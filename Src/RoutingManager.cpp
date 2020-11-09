@@ -15,13 +15,15 @@
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
-RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress _gateway, const uint _extraTtl, const int _mgIntervalSec, const int _mgPercent):
+RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress _gateway, const uint _extraTtl, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric):
     logger(_logger),
     ifname(_ifname),
     gateway(_gateway),
     extraTtl(_extraTtl),
     mgIntervalSec(_mgIntervalSec),
-    mgPercent(_mgPercent)
+    mgPercent(_mgPercent),
+    metric(_metric),
+    ksMetric(_ksMetric)
 {
     UpdateCurTime();
     shutdownPending.store(false);

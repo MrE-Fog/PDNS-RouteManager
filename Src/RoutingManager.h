@@ -20,6 +20,8 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         const uint extraTtl;
         const int mgIntervalSec;
         const int mgPercent;
+        const int metric;
+        const int ksMetric;
         //varous locking stuff and cross-thread counters
         std::mutex opLock;
         std::atomic<bool> shutdownPending;
@@ -34,7 +36,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         void CleanStaleRoutes();
         uint64_t UpdateCurTime();
     public:
-        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTtl, const int mgIntervalSec, const int mgPercent);
+        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTtl, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric);
         //WorkerBase
         void Worker() final;
         void OnShutdown() final;

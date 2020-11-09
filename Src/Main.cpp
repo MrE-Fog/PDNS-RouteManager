@@ -30,7 +30,7 @@ int main (int argc, char *argv[])
     //TODO: add sane option parsing
     if(argc<4)
     {
-        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [use byte swap: true|false] [gateway ip] [extratTTL] [management interval] [max percent of routes to manage in a single management operation]" << std::endl;
+        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [killswitch metric] [use byte swap: true|false] [gateway ip] [extratTTL] [management interval] [max percent of routes to manage in a single management operation]" << std::endl;
         return 1;
     }
 
@@ -43,15 +43,22 @@ int main (int argc, char *argv[])
 
     //parse optional parameters
     const int metric=(argc>4)?std::atoi(argv[4]):100;
-    const bool useByteSwap=(argc>5)?(std::strncmp(argv[5],"true",4)==0):false;
-    const IPAddress gateway=(argc>6)?IPAddress(argv[6]):IPAddress("0.0.0.0");
-    const uint extraTTL=(argc>7)?(uint)std::atoi(argv[7]):(uint)(120*60);
-    const int mgIntervalSec=(argc>8)?std::atoi(argv[8]):5;
-    const int mgPercent=(argc>9)?std::atoi(argv[9]):5;
+    const int ksMetric=(argc>5)?std::atoi(argv[5]):101;
+    const bool useByteSwap=(argc>6)?(std::strncmp(argv[6],"true",4)==0):false;
+    const IPAddress gateway=(argc>7)?IPAddress(argv[7]):IPAddress("0.0.0.0");
+    const uint extraTTL=(argc>8)?(uint)std::atoi(argv[8]):(uint)(120*60);
+    const int mgIntervalSec=(argc>9)?std::atoi(argv[9]):5;
+    const int mgPercent=(argc>10)?std::atoi(argv[10]):5;
 
     if(metric<1)
     {
         logger.Error() << "metric number is invalid!" << std::endl;
+        return 1;
+    }
+
+    if(ksMetric<1||ksMetric<=metric)
+    {
+        logger.Error() << "killswitch metric number is incorrect, it must be > main metric" << std::endl;
         return 1;
     }
 
@@ -85,7 +92,7 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
-    RoutingManager routingMgr(logger,argv[3],gateway,extraTTL,mgIntervalSec,mgPercent);
+    RoutingManager routingMgr(logger,argv[3],gateway,extraTTL,mgIntervalSec,mgPercent,metric,ksMetric);
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(logger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
     NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
