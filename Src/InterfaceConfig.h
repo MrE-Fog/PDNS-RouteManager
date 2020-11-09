@@ -7,6 +7,7 @@
 class InterfaceConfig
 {
     public:
+        InterfaceConfig(const InterfaceConfig &other);
         InterfaceConfig(const bool isUp, const bool isPtP, const std::set<IPAddress> &localIPs, const std::set<IPAddress> &remoteIPs);
         const bool isUp;
         const bool isPtP;

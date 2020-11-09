@@ -1,5 +1,10 @@
 #include "InterfaceConfig.h"
 
+InterfaceConfig::InterfaceConfig(const InterfaceConfig& other):
+    InterfaceConfig(other.isUp,other.isPtP,other.localIPs,other.remoteIPs)
+{
+}
+
 InterfaceConfig::InterfaceConfig(const bool _isUp, const bool _isPtP, const std::set<IPAddress> &_localIPs, const std::set<IPAddress> &_remoteIPs):
     isUp(_isUp),
     isPtP(_isPtP),
