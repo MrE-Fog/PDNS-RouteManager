@@ -17,6 +17,7 @@
 #include <ifaddrs.h>
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
+class NetDevUpdateMessage: public INetDevUpdateMessage { public: NetDevUpdateMessage(InterfaceConfig _config):INetDevUpdateMessage(_config){} };
 
 NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const timeval &_timeout, const char* const _ifname):
     ifname(_ifname),
@@ -103,6 +104,7 @@ void NetDevTracker::Worker()
     cfgStorage.Set(cfgStorage.Get().SetType(isPtP).SetState(isUP));
 
     logger.Info()<<"Initial interface state: "<<cfgStorage.Get()<<std::endl;
+    sender.SendMessage(this,NetDevUpdateMessage(cfgStorage.Get()));
 
     while(true)
     {
@@ -176,7 +178,7 @@ void NetDevTracker::Worker()
                 if_indextoname(ifa->ifa_index, msg_ifname);
                 if(std::strncmp(ifname,msg_ifname,IFNAMSIZ)!=0)
                     continue; //interface name not matched
-                //mark config as updated for now, event if no changes in addresses was performed
+                //mark config as updated for now, even if no changes in addresses was performed
                 cfgStorage.isUpdated=true;
                 auto rtl = IFA_PAYLOAD(nh);
                 for (auto *rth = IFA_RTA(ifa); RTA_OK(rth, rtl); rth = RTA_NEXT(rth, rtl))
@@ -199,7 +201,7 @@ void NetDevTracker::Worker()
         {
             auto config=cfgStorage.Get();
             logger.Info()<<"Interface state updated: "<<config<<std::endl;
-            //TODO: send update
+            sender.SendMessage(this,NetDevUpdateMessage(config));
         }
     }
 
