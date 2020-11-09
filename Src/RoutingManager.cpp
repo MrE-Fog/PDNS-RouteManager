@@ -262,7 +262,7 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
         pendingInserts[dest]=expirationTime;
 }
 
-void RoutingManager::ConfirmRoute(const IPAddress &dest)
+void RoutingManager::ConfirmRouteAdd(const IPAddress &dest)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     logger.Info()<<"Processing route-added confirmation for: "<<dest<<std::endl;
@@ -279,6 +279,11 @@ void RoutingManager::ConfirmRoute(const IPAddress &dest)
     //move rule to activeRoutes, or create rule with minumum allowed ttl
     activeRoutes[dest]=expiration;
     pendingExpires.insert({expiration,dest});
+}
+
+void RoutingManager::ConfirmRouteDel(const IPAddress& dest)
+{
+    //TODO:
 }
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
@@ -305,7 +310,14 @@ void RoutingManager::OnMessage(const IMessage& message)
     if(message.msgType==MSG_ROUTE_ADDED)
     {
         auto addMsg=static_cast<const IRouteAddedMessage&>(message);
-        ConfirmRoute(addMsg.ip);
+        ConfirmRouteAdd(addMsg.ip);
+        return;
+    }
+
+    if(message.msgType==MSG_ROUTE_REMOVED)
+    {
+        auto rmMsg=static_cast<const IRouteRemovedMessage&>(message);
+        ConfirmRouteDel(rmMsg.ip);
         return;
     }
 

@@ -45,7 +45,8 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         //service methods that will use opLock internally
         void ManageRoutes();
         void InsertRoute(const IPAddress &dest, uint ttl);
-        void ConfirmRoute(const IPAddress& dest);
+        void ConfirmRouteAdd(const IPAddress& dest);
+        void ConfirmRouteDel(const IPAddress& dest);
         void ProcessNetDevUpdate(const InterfaceConfig &newConfig);
         //internal service methods that is not using opLock.
         uint64_t _UpdateCurTime();
