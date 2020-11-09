@@ -42,24 +42,17 @@ void NetDevTracker::Worker()
         control.Shutdown(error);
     }
 
-    sockaddr_nl addr = {};
-    addr.nl_family=AF_NETLINK;
-    addr.nl_groups=RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
+    sockaddr_nl nlAddr = {};
+    nlAddr.nl_family=AF_NETLINK;
+    nlAddr.nl_groups=RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
 
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    if (bind(sock, (sockaddr *)&nlAddr, sizeof(nlAddr)) == -1) {
         auto error=errno;
         logger.Error()<<"Failed to bind to netlink socket: "<<strerror(error)<<std::endl;
         control.Shutdown(error);
     }
 
     //TODO: get initial information about interfaces using getifaddrs
-
-
-    //from man netlink.7
-    nlmsghdr buf[8192/sizeof(struct nlmsghdr)];
-    iovec iov = { buf, sizeof(buf) };
-    sockaddr_nl sa;
-    msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
 
     while(true)
     {
@@ -85,6 +78,12 @@ void NetDevTracker::Worker()
             control.Shutdown(error);
         }
 
+        //from man netlink.7
+        nlmsghdr buf[8192/sizeof(struct nlmsghdr)] = {};
+        iovec iov = { buf, sizeof(buf) };
+        sockaddr_nl sa = {};
+        msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
+
         auto len = recvmsg(sock, &msg, 0);
         for (auto *nh = (nlmsghdr*)buf; NLMSG_OK (nh, len); nh = NLMSG_NEXT (nh, len))
         {
@@ -95,6 +94,25 @@ void NetDevTracker::Worker()
                 auto error=errno;
                 logger.Error()<<"Error received from netlink : "<<strerror(error)<<std::endl;
                 control.Shutdown(error);
+            }
+            else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK)
+            {
+                auto *ifl = (ifinfomsg*)NLMSG_DATA(nh);
+                char msg_ifname[IFNAMSIZ];
+                if_indextoname(ifl->ifi_index, msg_ifname);
+                if(std::strncmp(ifname,msg_ifname,IFNAMSIZ)!=0)
+                    continue; //interface name not matched
+                if(!(ifl->ifi_flags&IFF_RUNNING))
+                {
+                    logger.Info()<<"Interface stopped"<<std::endl;
+                    continue;
+                }
+                logger.Info()<<"Interface started"<<std::endl;
+                if(ifl->ifi_flags&IFF_POINTOPOINT)
+                {
+                    logger.Info()<<"Interface point-to-point"<<std::endl;
+                    continue;
+                }
             }
             else if (nh->nlmsg_type == RTM_NEWADDR || nh->nlmsg_type == RTM_DELADDR)
             {
