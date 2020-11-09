@@ -11,9 +11,11 @@
 #include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <sys/select.h>
+#include <arpa/inet.h>
 
-NetDevTracker::NetDevTracker(ILogger &_logger, IControl &_control, const timeval &_timeout):
+NetDevTracker::NetDevTracker(ILogger &_logger, IControl &_control, const timeval &_timeout, const char* const _ifname):
     WorkerBase(_control),
+    ifname(_ifname),
     timeout(_timeout),
     logger(_logger)
 {
@@ -28,13 +30,13 @@ void NetDevTracker::RequestShutdown()
 
 void NetDevTracker::Worker()
 {
-    logger.Info()<<"NetDevTracker worker thread started"<<std::endl;
+    logger.Info()<<"Tracking network interface: "<<ifname<<std::endl;
 
     auto sock=socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if(sock==-1)
     {
         auto error=errno;
-        logger.Error() << "Failed to open netlink socket: " << strerror(error) << std::endl;
+        logger.Error()<<"Failed to open netlink socket: "<<strerror(error)<<std::endl;
         control.Shutdown(error);
     }
 
@@ -44,9 +46,12 @@ void NetDevTracker::Worker()
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
         auto error=errno;
-        logger.Error() << "Failed to bind to netlink socket: " << strerror(error) << std::endl;
+        logger.Error()<<"Failed to bind to netlink socket: "<<strerror(error)<<std::endl;
         control.Shutdown(error);
     }
+
+    //TODO: get initial information about interfaces using getifaddrs
+
 
     //from man netlink.7
     nlmsghdr buf[8192/sizeof(struct nlmsghdr)];
@@ -74,29 +79,54 @@ void NetDevTracker::Worker()
         if(rv<0)
         {
             auto error=errno;
-            logger.Error() << "Error awaiting message from netlink : " << strerror(error) << std::endl;
+            logger.Error()<<"Error awaiting message from netlink : "<<strerror(error)<<std::endl;
             control.Shutdown(error);
         }
 
         auto len = recvmsg(sock, &msg, 0);
-        for (nlmsghdr *nh = (struct nlmsghdr *) buf; NLMSG_OK (nh, len); nh = NLMSG_NEXT (nh, len))
+        for (auto *nh = (nlmsghdr*)buf; NLMSG_OK (nh, len); nh = NLMSG_NEXT (nh, len))
         {
             if (nh->nlmsg_type == NLMSG_DONE) // The end of multipart message
                 break;
             if (nh->nlmsg_type == NLMSG_ERROR)
             {
                 auto error=errno;
-                logger.Error() << "Error received from netlink : " << strerror(error) << std::endl;
+                logger.Error()<<"Error received from netlink : "<<strerror(error)<<std::endl;
                 control.Shutdown(error);
             }
-            logger.Warning() << "Message received, TODO: decode" << std::endl;
+            if (nh->nlmsg_type == RTM_NEWADDR)
+            {
+                auto *ifa = (ifaddrmsg*)NLMSG_DATA(nh);
+                char name[IFNAMSIZ];
+                if_indextoname(ifa->ifa_index, name);
+                //TODO: ignore interface that is not tracked
+                logger.Info()<<"New address on interface: "<<name<<std::endl;
+                auto rtl = IFA_PAYLOAD(nh);
+                for (auto *rth = IFA_RTA(ifa); RTA_OK(rth, rtl); rth = RTA_NEXT(rth, rtl))
+                {
+                    if (rth->rta_type == IFA_LOCAL)
+                    {
+                        char ip[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, RTA_DATA(rth), ip, sizeof(ip));
+                        logger.Info()<<"interface "<<name<<"; local ip "<<ip<<std::endl;
+                    }
+                    if (rth->rta_type == IFA_ADDRESS)
+                    {
+                        char ip[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, RTA_DATA(rth), ip, sizeof(ip));
+                        logger.Info()<<"interface "<<name<<"; ip "<<ip<<std::endl;
+                    }
+                }
+
+            }
+            logger.Warning()<<"Unknown message received, TODO: decode"<<std::endl;
         }
     }
 
     if(close(sock)!=0)
     {
         auto error=errno;
-        logger.Error() << "Failed to close netlink socket: " << strerror(error) << std::endl;
+        logger.Error()<<"Failed to close netlink socket: "<<strerror(error)<<std::endl;
         control.Shutdown(error);
     }
 }

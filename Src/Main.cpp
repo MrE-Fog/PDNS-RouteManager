@@ -41,7 +41,7 @@ int main (int argc, char *argv[])
         return usage(logger,argv[0]);
 
     //create main worker-instances
-    NetDevTracker tracker(logger,control,timeoutTv);
+    NetDevTracker tracker(logger,control,timeoutTv,argv[3]);
 
     //init
     tracker.Startup();
