@@ -19,9 +19,10 @@
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 class NetDevUpdateMessage: public INetDevUpdateMessage { public: NetDevUpdateMessage(InterfaceConfig _config):INetDevUpdateMessage(_config){} };
 
-NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const char* const _ifname):
+NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const int _metric, const char* const _ifname):
     ifname(_ifname),
     timeout(_timeout),
+    metric(_metric),
     logger(_logger),
     sender(_sender)
 {
@@ -56,7 +57,7 @@ void NetDevTracker::Worker()
 
     sockaddr_nl nlAddr = {};
     nlAddr.nl_family=AF_NETLINK;
-    nlAddr.nl_groups=RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
+    nlAddr.nl_groups=RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR | RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_ROUTE;
 
     if (bind(sock, (sockaddr *)&nlAddr, sizeof(nlAddr)) == -1)
     {
@@ -193,6 +194,42 @@ void NetDevTracker::Worker()
                     else if(rth->rta_type == IFA_ADDRESS && config.isPtP)
                         cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddRemoteIP(IPAddress(rth)):config.DelRemoteIP(IPAddress(rth)));
                 }
+            }
+            else if (nh->nlmsg_type == RTM_NEWROUTE || nh->nlmsg_type == RTM_DELROUTE)
+            {
+                auto *rtm = (rtmsg*)NLMSG_DATA(nh);
+                //we only need to track routes with these properties
+                if((rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)||rtm->rtm_table!=RT_TABLE_MAIN||rtm->rtm_scope!=RT_SCOPE_UNIVERSE||rtm->rtm_type!=RTN_UNICAST||rtm->rtm_protocol!=RTPROT_STATIC)
+                    continue;
+                //to identify route installed/removed by this program - we need to get following attributes
+                auto dest=ImmutableStorage<IPAddress>(IPAddress()); //destination ip address - valid ipv4 or ipv6 address
+                char rt_ifname[IFNAMSIZ]={}; //interface (must match)
+                int rt_metric=-1; //metric/priority (must match)
+                //process rtattr attributes
+                auto rtl = RTM_PAYLOAD(nh);
+                for (auto *rth = RTM_RTA(rtm); RTA_OK(rth, rtl); rth = RTA_NEXT(rth, rtl))
+                {
+                    if(rth->rta_type==RTA_DST)
+                        dest.Set(IPAddress(rth));
+                    else if(rth->rta_type==RTA_OIF)
+                    {
+                        uint ifIdx=0;
+                        memcpy((void*)&ifIdx,RTA_DATA(rth),sizeof(uint));
+                        if(if_indextoname(ifIdx,rt_ifname)==nullptr)
+                            logger.Warning()<<"Failed to decode interface name while parsing route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<" notification:"<<strerror(errno)<<std::endl;
+                    }
+                    else if(rth->rta_type==RTA_PRIORITY)
+                        memcpy((void*)&rt_metric,RTA_DATA(rth),sizeof(int));
+                }
+                if(metric!=rt_metric||std::strncmp(ifname,rt_ifname,IFNAMSIZ)!=0)
+                    continue; //metric/priority or interface name not matched
+                if(!dest.Get().isValid)
+                {
+                    logger.Warning()<<"No valid destination address received for route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<" notification"<<std::endl;
+                    continue;
+                }
+                logger.Info()<<"Route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<"; ip="<<dest.Get()<<std::endl;
+                //TODO: send route update message
             }
             else logger.Warning()<<"Unknown message received: "<<nh->nlmsg_type<<std::endl; //TODO: decode other messages
         }

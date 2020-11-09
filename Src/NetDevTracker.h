@@ -12,6 +12,7 @@ class NetDevTracker final : public WorkerBase
     private:
         const char * const ifname;
         const timeval timeout;
+        const int metric;
         ILogger &logger;
         IMessageSender &sender;
         std::atomic<bool> shutdownRequested;
@@ -21,7 +22,7 @@ class NetDevTracker final : public WorkerBase
         void Worker() final;
         void OnShutdown() final;
     public:
-        NetDevTracker(ILogger &logger, IMessageSender &sender, const timeval timeout, const char * const ifname);
+        NetDevTracker(ILogger &logger, IMessageSender &sender, const timeval timeout, const int metric, const char * const ifname);
 };
 
 #endif // NETDEVTRACKER_H

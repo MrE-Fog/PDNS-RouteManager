@@ -111,7 +111,7 @@ int main (int argc, char *argv[])
     RoutingManager routingMgr(logger,argv[3],gw4Set?gateway4:IPAddress(),gw6Set?gateway6:IPAddress(),extraTTL,mgIntervalSec,mgPercent,metric,ksMetric);
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(logger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
-    NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
+    NetDevTracker tracker(logger,messageBroker,timeoutTv,metric,argv[3]);
 
     //create sigset_t struct with signals
     sigset_t sigset;
