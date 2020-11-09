@@ -286,7 +286,7 @@ void RoutingManager::_ProcessStaleRoutes()
         auto tIT=pendingExpires.begin();
         if(curMark<tIT->first)
         {
-            logger.Info()<<"time diff for next mark: "<<tIT->first-curMark<<std::endl;
+            //logger.Info()<<"time diff for next mark: "<<tIT->first-curMark<<std::endl;
             return;
         }
         logger.Info()<<"Evaluating ip: "<<tIT->second<<" with expire mark: "<<tIT->first<<" current time mark: "<<curMark<<std::endl;
