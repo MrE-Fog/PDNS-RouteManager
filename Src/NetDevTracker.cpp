@@ -1,17 +1,22 @@
 #include "NetDevTracker.h"
+#include <thread>
+#include <chrono>
 
-NetDevTracker::NetDevTracker(const ILogger &_logger) :
+NetDevTracker::NetDevTracker(ILogger &_logger, IControl &control):
+    WorkerBase(control),
     logger(_logger)
 {
 
 }
 
-void NetDevTracker::Startup()
+void NetDevTracker::RequestShutdown()
 {
 
 }
 
-void NetDevTracker::Shutdown()
+void NetDevTracker::Worker()
 {
-
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Control.Shutdown(0);
 }
+

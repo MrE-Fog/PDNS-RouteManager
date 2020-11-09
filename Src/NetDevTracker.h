@@ -1,17 +1,18 @@
 #ifndef NETDEVTRACKER_H
 #define NETDEVTRACKER_H
 
-#include "IWorker.h"
+#include "WorkerBase.h"
 #include "ILogger.h"
+#include "IControl.h"
 
-class NetDevTracker final : public IWorker
+class NetDevTracker final : public WorkerBase
 {
     private:
-        const ILogger &logger;
+        ILogger& logger;
+        void Worker() final;
+        void RequestShutdown() final;
     public:
-        NetDevTracker(const ILogger &logger);
-        void Startup() final;
-        void Shutdown() final;
+        NetDevTracker(ILogger &logger, IControl &control);
 };
 
 #endif // NETDEVTRACKER_H
