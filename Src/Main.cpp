@@ -137,7 +137,7 @@ int main (int argc, char *argv[])
     //wait for background workers shutdown complete
     dnsReceiver.Shutdown();
     tracker.Shutdown();
-    routingMgr.RequestShutdown();
+    routingMgr.Shutdown();
 
     return  0;
 }
