@@ -41,6 +41,13 @@ IPAddress::IPAddress(const rtattr* const rta):
 {
 }
 
+IPAddress::IPAddress(const std::string& rdata):
+    isValid(rdata.length()==IPV6_ADDR_LEN || rdata.length()==IPV4_ADDR_LEN),
+    isV6(rdata.length()==IPV6_ADDR_LEN),
+    ip(!isValid?RawIP():RawIP(rdata.data(),rdata.length()))
+{
+}
+
 bool IPAddress::Equals(const IPAddress& other) const
 {
     return isValid==other.isValid && isV6==other.isV6 && std::memcmp(ip.data,other.ip.data,IP_ADDR_LEN)==0;

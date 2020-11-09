@@ -2,6 +2,7 @@
 #define IPADDRESS_H
 
 #include <iostream>
+#include <string>
 
 #include <linux/rtnetlink.h>
 
@@ -16,6 +17,8 @@ class IPAddress
         IPAddress(const sockaddr * const sa);
         IPAddress(const IPAddress &other);
         IPAddress(const rtattr * const rta);
+        IPAddress(const std::string &rdata);
+
         bool Equals(const IPAddress &other) const;
         bool Less(const IPAddress &other) const;
         bool Greater(const IPAddress &other) const;
