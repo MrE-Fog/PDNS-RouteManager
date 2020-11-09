@@ -102,7 +102,7 @@ void NetDevTracker::Worker()
     freeifaddrs(ifaddr);
     cfgStorage.Set(cfgStorage.Get().SetType(isPtP).SetState(isUP));
 
-    logger.Info()<<"Initial state: "<<cfgStorage.Get()<<std::endl;
+    logger.Info()<<"Initial interface state: "<<cfgStorage.Get()<<std::endl;
 
     while(true)
     {
@@ -129,6 +129,8 @@ void NetDevTracker::Worker()
             HandleError(error,"Error awaiting message from netlink: ");
             return;
         }
+
+        cfgStorage.isUpdated=false;
 
         //from man netlink.7
         nlmsghdr buf[8192/sizeof(struct nlmsghdr)] = {};
@@ -162,17 +164,10 @@ void NetDevTracker::Worker()
                 if_indextoname(ifl->ifi_index, msg_ifname);
                 if(std::strncmp(ifname,msg_ifname,IFNAMSIZ)!=0)
                     continue; //interface name not matched
-                if(!(ifl->ifi_flags&IFF_RUNNING))
-                {
-                    logger.Info()<<"Interface stopped"<<std::endl;
-                    continue;
-                }
-                logger.Info()<<"Interface started"<<std::endl;
-                if(ifl->ifi_flags&IFF_POINTOPOINT)
-                {
-                    logger.Info()<<"Interface point-to-point"<<std::endl;
-                    continue;
-                }
+                if(nh->nlmsg_type == RTM_DELLINK) //link disappeared, set state to false
+                    cfgStorage.Set(cfgStorage.Get().SetState(false)); //NOTE: TODO: maybe we also need to update interface type with SetType
+                else //network device was created or updated
+                    cfgStorage.Set(cfgStorage.Get().SetState((ifl->ifi_flags&(IFF_UP|IFF_RUNNING))!=0).SetType((ifl->ifi_flags&IFF_POINTOPOINT)!=0));
             }
             else if (nh->nlmsg_type == RTM_NEWADDR || nh->nlmsg_type == RTM_DELADDR)
             {
@@ -181,23 +176,30 @@ void NetDevTracker::Worker()
                 if_indextoname(ifa->ifa_index, msg_ifname);
                 if(std::strncmp(ifname,msg_ifname,IFNAMSIZ)!=0)
                     continue; //interface name not matched
-
+                //mark config as updated for now, event if no changes in addresses was performed
+                cfgStorage.isUpdated=true;
                 auto rtl = IFA_PAYLOAD(nh);
                 for (auto *rth = IFA_RTA(ifa); RTA_OK(rth, rtl); rth = RTA_NEXT(rth, rtl))
                 {
-                    if (rth->rta_type == IFA_LOCAL)
-                    {
-                        IPAddress ip(rth);
-                        logger.Info()<<(nh->nlmsg_type==RTM_NEWADDR?"Added":"Removed")<<" local ip "<<ip<<std::endl;
-                    }
-                    if (rth->rta_type == IFA_ADDRESS)
-                    {
-                        IPAddress ip(rth);
-                        logger.Info()<<(nh->nlmsg_type==RTM_NEWADDR?"Added":"Removed")<<" ip "<<ip<<std::endl;
-                    }
+                    auto config=cfgStorage.Get();
+                    if(rth->rta_type == IFA_LOCAL)
+                        cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddLocalIP(IPAddress(rth)):config.DelLocalIP(IPAddress(rth)));
+                    else if(rth->rta_type == IFA_BROADCAST)
+                        cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddRemoteIP(IPAddress(rth)):config.DelRemoteIP(IPAddress(rth)));
+                    else if(rth->rta_type == IFA_ADDRESS && !config.isPtP)
+                        cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddLocalIP(IPAddress(rth)):config.DelLocalIP(IPAddress(rth)));
+                    else if(rth->rta_type == IFA_ADDRESS && config.isPtP)
+                        cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddRemoteIP(IPAddress(rth)):config.DelRemoteIP(IPAddress(rth)));
                 }
             }
-            else logger.Warning()<<"Unknown message received, TODO: decode"<<std::endl;
+            else logger.Warning()<<"Unknown message received: "<<nh->nlmsg_type<<std::endl; //TODO: decode other messages
+        }
+
+        if(cfgStorage.isUpdated)
+        {
+            auto config=cfgStorage.Get();
+            logger.Info()<<"Interface state updated: "<<config<<std::endl;
+            //TODO: send update
         }
     }
 
