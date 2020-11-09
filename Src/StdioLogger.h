@@ -13,9 +13,9 @@ class StdioLogger : public ILogger
     protected:
         StdioLogger(const timespec &initialTime, const char * const name, std::mutex &ioLock);
     public:
-        std::ostream& Info() final;
-        std::ostream& Warning() final;
-        std::ostream& Error() final;
+        LogWriter Info() final;
+        LogWriter Warning() final;
+        LogWriter Error() final;
 };
 
 #endif // STDIOLOGGER_H

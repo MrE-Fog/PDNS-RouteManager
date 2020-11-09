@@ -1,28 +1,6 @@
 #include "StdioLogger.h"
 
-/*class LogStream: public std::streambuf, public std::ostream
-{
-    private:
-        std::ostream &output;
-    public:
-        LogStream(std::ostream &_output, int x): output(_output)
-        {
-            //TODO: write header
-        }
-
-        template <class T>
-        LogStream& operator<<(T&& x)
-        {
-            output<<std::forward<T>(x);
-            return *this;
-        }
-
-        LogStream& operator<<(std::ostream& (*manip)(std::ostream&))
-        {
-            output<<manip;
-            return *this;
-        }
-};*/
+#include "LogWriter.h"
 
 StdioLogger::StdioLogger(const timespec &_initialTime, const char * const name, std::mutex& ioLock):
     initialTime(_initialTime),
@@ -32,19 +10,17 @@ StdioLogger::StdioLogger(const timespec &_initialTime, const char * const name, 
 
 }
 
-std::ostream& StdioLogger::Info()
+LogWriter StdioLogger::Info()
 {
-/*    LogStream x(std::cout, 1);
-    return std::move(static_cast<std::ostream>(x));*/
-    return std::cout;
+    return LogWriter(std::cout,loggerLock);
 }
 
-std::ostream& StdioLogger::Warning()
+LogWriter StdioLogger::Warning()
 {
-    return std::cout;
+    return LogWriter(std::cout,loggerLock);
 }
 
-std::ostream& StdioLogger::Error()
+LogWriter StdioLogger::Error()
 {
-    return std::cerr;
+    return LogWriter(std::cerr,loggerLock);
 }
