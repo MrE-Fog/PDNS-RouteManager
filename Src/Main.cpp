@@ -29,7 +29,7 @@ int main (int argc, char *argv[])
     //TODO: add sane option parsing
     if(argc<4)
     {
-        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [use byte swap: true|false]" << std::endl;
+        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [use byte swap: true|false] [gateway ip] [extratTTL] [management interval] [max percent of routes to manage in a single management operation]" << std::endl;
         return 1;
     }
 
@@ -40,9 +40,43 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-    bool useByteSwap=false;
-    if(argc>4)
-        useByteSwap=(std::strncmp(argv[4],"true",4)==0);
+    //parse optional parameters
+    const int metric=(argc>4)?std::atoi(argv[4]):100;
+    const bool useByteSwap=(argc>5)?(std::strncmp(argv[5],"true",4)==0):false;
+    const IPAddress gateway=(argc>6)?IPAddress(argv[6]):IPAddress("0.0.0.0");
+    const uint extraTTL=(argc>7)?(uint)std::atoi(argv[7]):(uint)(120*60);
+    const int mgIntervalSec=(argc>8)?std::atoi(argv[8]):5;
+    const int mgPercent=(argc>9)?std::atoi(argv[9]):5;
+
+    if(metric<1)
+    {
+        logger.Error() << "metric number is invalid!" << std::endl;
+        return 1;
+    }
+
+    if(!gateway.isValid)
+    {
+        logger.Error() << "gateway address is invalid!" << std::endl;
+        return 1;
+    }
+
+    if(extraTTL<1)
+    {
+        logger.Error() << "extraTTL time is invalid!" << std::endl;
+        return 1;
+    }
+
+    if(mgIntervalSec<1)
+    {
+        logger.Error() << "management interval time is invalid!" << std::endl;
+        return 1;
+    }
+
+    if(mgPercent<1 || mgPercent>100)
+    {
+        logger.Error() << "management percent value is invalid!" << std::endl;
+        return 1;
+    }
 
     //configure essential stuff
     MessageBroker messageBroker;
