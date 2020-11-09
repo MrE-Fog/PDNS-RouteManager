@@ -222,23 +222,31 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
     auto expirationTime=curTime.load()+ttl+extraTTL;
 
     //check, maybe we already have this route as active
-    if(activeRoutes.find(dest)==activeRoutes.end())
+    auto aIT=activeRoutes.find(dest);
+    if(activeRoutes.find(dest)!=activeRoutes.end())
     {
         //if so - update expiration time, and return
-        activeRoutes[dest]=expirationTime;
-        pendingExpires.insert({expirationTime,dest});
+        if(aIT->second<expirationTime)
+        {
+            logger.Info()<<"Already installed route-rule detected, updating expiration time for: "<<dest<<std::endl;
+            activeRoutes[dest]=expirationTime;
+            pendingExpires.insert({expirationTime,dest});
+
+        }
+        else
+            logger.Warning()<<"Already installed route-rule detected for: "<<dest<<std::endl;
         return;
     }
 
     //push blackhole route regardless of network state
-     _PushRoute(dest,true);
+    _PushRoute(dest,true);
     //push new route immediately, only if network is up and running
     if(ifCfg.Get().isUp)
         _PushRoute(dest,false);
 
     //add new pending route, or update it's expiration time
     auto pIT=pendingInserts.find(dest);
-    if(pIT==activeRoutes.end()||pIT->second<expirationTime)
+    if(pIT==pendingInserts.end()||pIT->second<expirationTime)
         pendingInserts[dest]=expirationTime;
 }
 
@@ -246,8 +254,19 @@ void RoutingManager::ConfirmRoute(const IPAddress &dest)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     logger.Info()<<"Processing route-added confirmation for: "<<dest<<std::endl;
-    //if there are no pendingInserts record for this IP, show warning and skip
-    //move rule from pendingInserts to activeRoutes
+    //if there are no pendingInserts record for this IP, show warning
+    auto pIT=pendingInserts.find(dest);
+    uint64_t expiration=curTime.load()+extraTTL;
+    if(pIT==pendingInserts.end())
+        logger.Warning()<<"No pending route-rule insert found for: "<<dest<<std::endl;
+    else
+    {
+        expiration=pIT->second;
+        pendingInserts.erase(dest);
+    }
+    //move rule to activeRoutes, or create rule with minumum allowed ttl
+    activeRoutes[dest]=expiration;
+    pendingExpires.insert({expiration,dest});
 }
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
