@@ -125,7 +125,7 @@ void RoutingManager::ProcessNetDevUpdate(const InterfaceConfig& newConfig)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     ifCfg.Set(newConfig); //update config
-    _ProcessPendingInserts(); //trigger pending routes processing
+    _ProcessPendingInserts(); //trigger pending routes processing immediately
 }
 
 void RoutingManager::ManageRoutes()
@@ -193,8 +193,8 @@ void RoutingManager::_ProcessPendingInserts()
 void RoutingManager::_FinalizeRouteInsert(const IPAddress& dest)
 {
     //if there are no pendingInserts record for this IP, show warning
-    auto pIT=pendingInserts.find(dest);
     uint64_t expiration=curTime.load()+extraTTL;
+    auto pIT=pendingInserts.find(dest);
     if(pIT==pendingInserts.end())
         logger.Warning()<<"No pending route-rule insert found for: "<<dest<<std::endl; //route without pending-insert will me created with minimum ttl
     else
@@ -271,7 +271,7 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
 
     //check, maybe we already have this route as active
     auto aIT=activeRoutes.find(dest);
-    if(activeRoutes.find(dest)!=activeRoutes.end())
+    if(aIT!=activeRoutes.end())
     {
         //if so - update expiration time, and return
         if(aIT->second<expirationTime)
