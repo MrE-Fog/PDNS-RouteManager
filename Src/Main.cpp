@@ -9,6 +9,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <cstring>
 
 int main (int argc, char *argv[])
 {
@@ -16,14 +17,20 @@ int main (int argc, char *argv[])
     const timeval timeoutTv = { timeoutMs/1000, (timeoutMs-timeoutMs/1000*1000)*1000 };
 
     StdioLogger logger;
-    if(argc!=4)
+
+    //TODO: add sane option parsing
+    if(argc<4)
     {
-        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev>" << std::endl;
+        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [use byte swap: true|false]" << std::endl;
         return 1;
     }
 
+    bool useByteSwap=false;
+    if(argc>4)
+        useByteSwap=(std::strncmp(argv[4],"true",4)==0);
+
     //test protobuf
-    ProtobufHelper pbHelper(logger,true);
+    ProtobufHelper pbHelper(logger,useByteSwap);
     pbHelper.Test("../../test1.pb");
 
     //configure essential stuff
