@@ -88,6 +88,11 @@ void IPAddress::ToSA(void* const targetSA) const
     }
 }
 
+void IPAddress::ToBinary(void *const outBuff) const
+{
+    std::memcpy(outBuff,(const void*)ip.data,isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
+}
+
 size_t IPAddress::GetHashCode() const
 {
     int rSz=sizeof(size_t);

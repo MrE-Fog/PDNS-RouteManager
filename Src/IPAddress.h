@@ -22,6 +22,7 @@ class IPAddress
         IPAddress(const char * const string);
 
         void ToSA(void * const targetSA) const;
+        void ToBinary(void * const outBuff) const;
 
         size_t GetHashCode() const;
         bool Equals(const IPAddress &other) const;
