@@ -191,9 +191,12 @@ void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
     ip.ToBinary(addr);
     AddRTA(&msg.nl,RTA_DST,addr,ip.isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
 
-    //add interface
-    auto ifIdx=if_nametoindex(ifname);
-    AddRTA(&msg.nl,RTA_OIF,&ifIdx,sizeof(ifIdx));
+    if(!blackhole)
+    {
+        //add interface
+        auto ifIdx=if_nametoindex(ifname);
+        AddRTA(&msg.nl,RTA_OIF,&ifIdx,sizeof(ifIdx));
+    }
 
     //set metric/priority
     int prio=blackhole?ksMetric:metric;
