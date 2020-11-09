@@ -12,9 +12,9 @@
 #include <mutex>
 #include <atomic>
 #include <ctime>
-#include <unordered_map>
-#include <set>
 #include <unordered_set>
+#include <unordered_map>
+#include <map>
 
 class RoutingManager : public IMessageSubscriber, public WorkerBase
 {
@@ -35,11 +35,12 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         std::atomic<uint64_t> curTime;
         //all other fields must be accesed only using opLock mutex
         int sock;
-        uint32_t seqNum;
-        std::unordered_map<uint32_t,Route> pendingInserts; //non-confirmed and failed routes, must be reseeded as fast as possible, KEY is seqNum
-        std::set<Route> activeRoutes; //currently active routes, sorted by expiration times
-        std::unordered_set<IPAddress> pendingRemoves; //routes pending to remove, identified by IP
         ImmutableStorage<InterfaceConfig> ifCfg;
+        //containters for storing routes at various states
+        std::unordered_map<IPAddress,uint64_t> pendingInserts; //non-confirmed and failed routes
+        std::unordered_map<IPAddress,uint64_t> activeRoutes; //confirmed routes
+        std::unordered_set<IPAddress> pendingRemoves; //routes pending to remove
+        std::multimap<uint64_t,IPAddress> pendingExpires; //non-confirmed and failed routes
         //service methods that will use opLock internally
         void CleanStaleRoutes();
         void InsertRoute(const IPAddress &dest, uint ttl);
@@ -48,7 +49,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         uint64_t _UpdateCurTime();
         uint32_t _UpdateSeqNum();
         void _ProcessPendingInserts();
-        void _PushRoute(const Route &route);
+        void _PushRoute(const IPAddress& ip);
     public:
         RoutingManager(ILogger &logger, const char * const ifname, const IPAddress &gateway4, const IPAddress &gateway6, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric);
         //WorkerBase

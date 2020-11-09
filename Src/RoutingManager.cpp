@@ -39,7 +39,6 @@ RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, cons
     _UpdateCurTime();
     shutdownPending.store(false);
     sock=-1;
-    seqNum=10;
 }
 
 //overrodes for performing some extra-init
@@ -129,14 +128,6 @@ void RoutingManager::CleanStaleRoutes()
     //TODO: clean stale routes, up to max percent
 }
 
-uint32_t RoutingManager::_UpdateSeqNum()
-{
-    seqNum++;
-    if(seqNum<10)
-        seqNum=10;
-    return seqNum;
-}
-
 #define NLMSG_TAIL(nmsg) ((struct rtattr *) (((unsigned char *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
 
 static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, size_t alen)
@@ -155,11 +146,13 @@ static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, si
 
 void RoutingManager::_ProcessPendingInserts()
 {
-    for (auto const &el : pendingInserts)
-        _PushRoute(el.second);
+    //TODO:
+    //for (auto const &el : pendingInserts)
+    //    _PushRoute(el.second);
 }
 
-void RoutingManager::_PushRoute(const Route &route)
+//TODO: push blackhole route
+void RoutingManager::_PushRoute(const IPAddress &ip)
 {
     RouteMsg msg={};
 
@@ -172,13 +165,13 @@ void RoutingManager::_PushRoute(const Route &route)
     msg.rt.rtm_type=RTN_UNICAST;
     //msg.rt.rtm_flags=RTM_F_NOTIFY;
     msg.rt.rtm_protocol=RTPROT_STATIC; //TODO: check do we really need this
-    msg.rt.rtm_dst_len=route.dest.isV6?128:32;
-    msg.rt.rtm_family=route.dest.isV6?AF_INET6:AF_INET;
+    msg.rt.rtm_dst_len=ip.isV6?128:32;
+    msg.rt.rtm_family=ip.isV6?AF_INET6:AF_INET;
 
     //add destination
     unsigned char addr[IP_ADDR_LEN]={};
-    route.dest.ToBinary(addr);
-    AddRTA(&msg.nl,RTA_DST,addr,route.dest.isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
+    ip.ToBinary(addr);
+    AddRTA(&msg.nl,RTA_DST,addr,ip.isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
 
     //add interface
     auto ifIdx=if_nametoindex(ifname);
@@ -190,13 +183,13 @@ void RoutingManager::_PushRoute(const Route &route)
     //add gateway
     if(!ifCfg.Get().isPtP)
     {
-        if(gateway4.isValid && !route.dest.isV6)
+        if(gateway4.isValid && !ip.isV6)
         {
             unsigned char gw[IP_ADDR_LEN]={};
             gateway4.ToBinary(gw);
             AddRTA(&msg.nl,RTA_GATEWAY,gw,IPV4_ADDR_LEN);
         }
-        if(gateway6.isValid && route.dest.isV6)
+        if(gateway6.isValid && ip.isV6)
         {
             unsigned char gw[IP_ADDR_LEN]={};
             gateway6.ToBinary(gw);
@@ -212,22 +205,25 @@ void RoutingManager::_PushRoute(const Route &route)
 void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
 {
     const std::lock_guard<std::mutex> lock(opLock);
+    auto expirationTime=curTime.load()+ttl+extraTTL;
 
-    //TODO: check, maybe we already have this route as pending
-    //if so - update pending route expiration time, generate new sequence number and process pending route insertion
-    //and return
+    //check, maybe we already have this route as active
+    if(activeRoutes.find(dest)==activeRoutes.end())
+    {
+        //if so - update expiration time, and return
+        activeRoutes[dest]=expirationTime;
+        pendingExpires.insert({expirationTime,dest});
+        return;
+    }
 
-    //TODO: check, maybe we already have this route as active
-    //if so - update expiration time
-    //and return
+    //push new route immediately
+    _PushRoute(dest);
+    //TODO: also push blackhole route
 
-    //add new pending route
-    auto newRoute=Route(dest,curTime.load()+ttl+extraTTL);
-    auto newSeq=_UpdateSeqNum();
-    pendingInserts.insert({newSeq,newRoute});
-
-    //process new route
-    _PushRoute(newRoute);
+    //add new pending route, or update it's expiration time
+    auto pIT=pendingInserts.find(dest);
+    if(pIT==activeRoutes.end()||pIT->second<expirationTime)
+        pendingInserts[dest]=expirationTime;
 }
 
 
