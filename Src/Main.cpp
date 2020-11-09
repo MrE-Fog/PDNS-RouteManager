@@ -56,7 +56,7 @@ int main (int argc, char *argv[])
     //create sigset_t struct with signals
     sigset_t sigset;
     sigemptyset(&sigset);
-    if(sigaddset(&sigset,SIGINT)!=0||sigaddset(&sigset,SIGHUP)!=0||sigaddset(&sigset,SIGTERM)!=0||sigaddset(&sigset,SIGUSR1)!=0||sigaddset(&sigset,SIGUSR2)!=0||pthread_sigmask(SIG_BLOCK,&sigset,nullptr)!=0)
+    if(sigaddset(&sigset,SIGHUP)!=0||sigaddset(&sigset,SIGTERM)!=0||sigaddset(&sigset,SIGUSR1)!=0||sigaddset(&sigset,SIGUSR2)!=0||pthread_sigmask(SIG_BLOCK,&sigset,nullptr)!=0)
     {
         logger.Error()<<"Failed to setup signal-handling"<<std::endl;
         return 1;
@@ -70,14 +70,14 @@ int main (int argc, char *argv[])
     {
         auto signal=sigtimedwait(&sigset,nullptr,&sigTs);
         auto error=errno;
-        if(signal<0 && error!=EAGAIN)
+        if(signal<0 && error!=EAGAIN && error!=EINTR)
         {
             logger.Error()<<"Error while handling incoming signal: "<<strerror(error)<<std::endl;
             break;
         }
-        else if(signal>0 && signal!=SIGUSR2) //SIGUSR2 triggered by shutdownhandler to unblock sigtimedwait
+        else if(signal>0 && signal!=SIGUSR2 && signal!=SIGINT) //SIGUSR2 triggered by shutdownhandler to unblock sigtimedwait
         {
-            logger.Info()<< "Pending shutdown by receiving signal: "<<strsignal(signal)<<std::endl;
+            logger.Info()<< "Pending shutdown by receiving signal: "<<signal<<"->"<<strsignal(signal)<<std::endl;
             break;
         }
 
