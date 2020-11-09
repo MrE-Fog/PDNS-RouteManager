@@ -38,6 +38,10 @@ void NetDevTracker::HandleError(int ec, const char* message)
     sender.SendMessage(this,ShutdownMessage(ec));
 }
 
+#define ISPTP(ifa) ((ifa->ifa_flags&IFF_POINTOPOINT)!=0)
+#define ISUP(ifa) ((ifa->ifa_flags&(IFF_UP|IFF_RUNNING))!=0)
+#define ISBRC(ifa) ((ifa->ifa_flags&IFF_BROADCAST)!=0)
+
 void NetDevTracker::Worker()
 {
     logger.Info()<<"Tracking network interface: "<<ifname<<std::endl;
@@ -59,8 +63,7 @@ void NetDevTracker::Worker()
         return;
     }
 
-    auto config=ImmutableStorage<InterfaceConfig>(InterfaceConfig());
-    config=config.Get().SetState(true);
+    auto cfgStorage=ImmutableStorage<InterfaceConfig>(InterfaceConfig());
 
     ifaddrs *ifaddr=nullptr;
     if(getifaddrs(&ifaddr)!=0)
@@ -69,34 +72,37 @@ void NetDevTracker::Worker()
         return;
     }
 
+    bool isUP=true;
+    bool isPtP=false;
+
     for(auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
     {
-        if(ifa->ifa_addr == NULL)
-            continue;
+        if(ifa->ifa_addr==NULL)
+            continue; //no address
         if(ifa->ifa_addr->sa_family!=AF_INET && ifa->ifa_addr->sa_family!=AF_INET6)
             continue; //unsupported interface family
         if(std::strncmp(ifname,ifa->ifa_name,IFNAMSIZ)!=0)
             continue; //interface name not matched
 
-        //set interface type and state
-        bool isPtP=(ifa->ifa_flags&IFF_POINTOPOINT)!=0;
-        config=config.Get().SetType(config.Get().isPtP|isPtP);
-        config=config.Get().SetState(config.Get().isUp&((ifa->ifa_flags&(IFF_UP|IFF_RUNNING))!=0));
-
-        //set local ip for interface
-        IPAddress firstIp(ifa->ifa_addr);
-        config=config.Get().AddLocalIP(firstIp);
+        //add local ip for interface
+        IPAddress localIP(ifa->ifa_addr);
+        cfgStorage.Set(cfgStorage.Get().AddLocalIP(localIP));
 
         //set remote address - either broadcast or ptp
-        bool isBRC=(ifa->ifa_flags&IFF_BROADCAST)!=0;
-        IPAddress secondIp=isPtP?IPAddress(ifa->ifa_dstaddr):(isBRC&&!firstIp.isV6)?IPAddress(ifa->ifa_broadaddr):IPAddress();
-        if(secondIp.isValid)
-            config=config.Get().AddRemoteIP(secondIp);
+        if(ISPTP(ifa))
+            cfgStorage.Set(cfgStorage.Get().AddRemoteIP(IPAddress(ifa->ifa_dstaddr)));
+        else if(ISBRC(ifa)&&!localIP.isV6)
+            cfgStorage.Set(cfgStorage.Get().AddRemoteIP(IPAddress(ifa->ifa_broadaddr)));
+
+        //update interface flags
+        isPtP|=ISPTP(ifa);
+        isUP&=ISUP(ifa);
     }
 
     freeifaddrs(ifaddr);
+    cfgStorage.Set(cfgStorage.Get().SetType(isPtP).SetState(isUP));
 
-    logger.Info()<<"current interface state: "<<config.Get()<<std::endl;
+    logger.Info()<<"Initial state: "<<cfgStorage.Get()<<std::endl;
 
     while(true)
     {
