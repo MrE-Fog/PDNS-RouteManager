@@ -13,7 +13,7 @@ addons:
 
 stage_test: &test
   stage: "Build test"
-  script: cmake . && make && make install
+  script: cmake . && make && make install DESTDIR=/tmp/pdns-routemgr
 
 jobs:
   include:
