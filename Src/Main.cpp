@@ -1,6 +1,7 @@
 #include "ILogger.h"
 #include "StdioLogger.h"
 #include "NetDevTracker.h"
+#include "DNSReceiver.h"
 #include "MessageBroker.h"
 #include "SignalHandler.h"
 #include "ShutdownHandler.h"
@@ -10,6 +11,8 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include <cstdlib>
+
 
 int main (int argc, char *argv[])
 {
@@ -25,13 +28,26 @@ int main (int argc, char *argv[])
         return 1;
     }
 
+    //parse port
+    if(std::strlen(argv[2])>5)
+    {
+        return 1;
+        logger.Error() << "port number is too long!" << std::endl;
+    }
+    auto port=std::atoi(argv[2]);
+    if(port<1||port>65535)
+    {
+        return 1;
+        logger.Error() << "port number is incorrect!" << std::endl;
+    }
+
     bool useByteSwap=false;
     if(argc>4)
         useByteSwap=(std::strncmp(argv[4],"true",4)==0);
 
     //test protobuf
-    ProtobufHelper pbHelper(logger,useByteSwap);
-    pbHelper.Test("../../test1.pb");
+   // ProtobufHelper pbHelper(logger,useByteSwap);
+   // pbHelper.Test("../../test1.pb");
 
     //configure essential stuff
     MessageBroker messageBroker;
@@ -40,9 +56,11 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
+    DNSReceiver dnsReceiver(logger,IPAddress(argv[1]),port,useByteSwap);
     NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
 
     //start background workers, or perform post-setup init
+    dnsReceiver.Startup();
     tracker.Startup();
 
     while(true)
@@ -61,6 +79,7 @@ int main (int argc, char *argv[])
     }
 
     //shutdown background workers
+    dnsReceiver.Shutdown();
     tracker.Shutdown();
 
     return  0;
