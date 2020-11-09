@@ -42,14 +42,15 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         std::unordered_set<IPAddress> pendingRemoves; //routes pending to remove
         std::multimap<uint64_t,IPAddress> pendingExpires; //non-confirmed and failed routes
         //service methods that will use opLock internally
-        void CleanStaleRoutes();
+        void ManageRoutes();
         void InsertRoute(const IPAddress &dest, uint ttl);
+        void ConfirmRoute(const IPAddress& dest);
         void ProcessNetDevUpdate(const InterfaceConfig &newConfig);
         //internal service methods that is not using opLock.
         uint64_t _UpdateCurTime();
         uint32_t _UpdateSeqNum();
         void _ProcessPendingInserts();
-        void _PushRoute(const IPAddress& ip);
+        void _PushRoute(const IPAddress& ip, bool blackhole);
     public:
         RoutingManager(ILogger &logger, const char * const ifname, const IPAddress &gateway4, const IPAddress &gateway6, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric);
         //WorkerBase

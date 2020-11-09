@@ -109,7 +109,7 @@ void RoutingManager::Worker()
         if(now-prev>=(unsigned)mgIntervalSec)
         {
             prev=now;
-            CleanStaleRoutes();
+            ManageRoutes();
         }
     }
     logger.Info()<<"Shuting down RoutingManager worker"<<std::endl;
@@ -122,10 +122,11 @@ void RoutingManager::ProcessNetDevUpdate(const InterfaceConfig& newConfig)
     _ProcessPendingInserts(); //trigger pending routes processing
 }
 
-void RoutingManager::CleanStaleRoutes()
+void RoutingManager::ManageRoutes()
 {
     const std::lock_guard<std::mutex> lock(opLock);
-    //TODO: clean stale routes, up to max percent
+    _ProcessPendingInserts(); //process pending routes if any
+    //TODO: initiate remove of stale routes, up to max percent
 }
 
 #define NLMSG_TAIL(nmsg) ((struct rtattr *) (((unsigned char *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
@@ -146,14 +147,27 @@ static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, si
 
 void RoutingManager::_ProcessPendingInserts()
 {
-    //TODO:
-    //for (auto const &el : pendingInserts)
-    //    _PushRoute(el.second);
+    for (auto const &el : pendingInserts)
+    {
+        //re-add routes with valid expiration times
+        _PushRoute(el.first,true); //push blackhole route
+        if(ifCfg.Get().isUp)
+            _PushRoute(el.first,false); //push regular route
+        //TODO: initiate remove of currently expired routes
+    }
 }
 
-//TODO: push blackhole route
-void RoutingManager::_PushRoute(const IPAddress &ip)
+void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
 {
+    if(blackhole)
+        logger.Info()<<"Pushing blackhole rule for: "<<ip<<std::endl;
+    else
+        logger.Info()<<"Pushing routing rule for: "<<ip<<std::endl;
+
+    //TODO: logic for blackhole route
+    if(blackhole)
+        return;
+
     RouteMsg msg={};
 
     msg.nl.nlmsg_len=NLMSG_LENGTH(sizeof(rtmsg));
@@ -216,9 +230,11 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
         return;
     }
 
-    //push new route immediately
-    _PushRoute(dest);
-    //TODO: also push blackhole route
+    //push blackhole route regardless of network state
+     _PushRoute(dest,true);
+    //push new route immediately, only if network is up and running
+    if(ifCfg.Get().isUp)
+        _PushRoute(dest,false);
 
     //add new pending route, or update it's expiration time
     auto pIT=pendingInserts.find(dest);
@@ -226,13 +242,20 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
         pendingInserts[dest]=expirationTime;
 }
 
+void RoutingManager::ConfirmRoute(const IPAddress &dest)
+{
+    const std::lock_guard<std::mutex> lock(opLock);
+    logger.Info()<<"Processing route-added confirmation for: "<<dest<<std::endl;
+    //if there are no pendingInserts record for this IP, show warning and skip
+    //move rule from pendingInserts to activeRoutes
+}
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
 {
-    return (!shutdownPending.load())&&(msgType==MSG_NETDEV_UPDATE || msgType==MSG_ROUTE_REQUEST);
+    return (!shutdownPending.load())&&(msgType==MSG_NETDEV_UPDATE||msgType==MSG_ROUTE_REQUEST||msgType==MSG_ROUTE_ADDED||msgType==MSG_ROUTE_REMOVED);
 }
 
-//main logic executed from message handler
+//this logic executed from thread emitting the messages, and must be internally locked
 void RoutingManager::OnMessage(const IMessage& message)
 {
     if(message.msgType==MSG_NETDEV_UPDATE)
@@ -245,6 +268,13 @@ void RoutingManager::OnMessage(const IMessage& message)
     {
         auto reqMsg=static_cast<const IRouteRequestMessage&>(message);
         InsertRoute(reqMsg.ip,reqMsg.ttl);
+        return;
+    }
+
+    if(message.msgType==MSG_ROUTE_ADDED)
+    {
+        auto addMsg=static_cast<const IRouteAddedMessage&>(message);
+        ConfirmRoute(addMsg.ip);
         return;
     }
 }
