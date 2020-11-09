@@ -25,7 +25,7 @@ struct RouteMsg
         unsigned char data[64];
 };
 
-RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress &_gateway4, const IPAddress &_gateway6, const uint _extraTTL, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric):
+RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress &_gateway4, const IPAddress &_gateway6, const uint _extraTTL, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric, const int _addRetryCount):
     logger(_logger),
     ifname(_ifname),
     gateway4(_gateway4),
@@ -35,6 +35,7 @@ RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, cons
     mgPercent(_mgPercent),
     metric(_metric),
     ksMetric(_ksMetric),
+    addRetryCount(_addRetryCount),
     ifCfg(ImmutableStorage<InterfaceConfig>(InterfaceConfig()))
 {
     _UpdateCurTime();

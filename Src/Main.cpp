@@ -30,7 +30,7 @@ int main (int argc, char *argv[])
     //TODO: add sane option parsing
     if(argc<4)
     {
-        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [killswitch metric] [use byte swap: true|false] [gateway ipv4] [gateway ipv6] [extratTTL] [management interval] [max percent of routes to manage in a single management operation]" << std::endl;
+        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [killswitch metric] [use byte swap: true|false] [gateway ipv4] [gateway ipv6] [extratTTL] [management interval] [max percent or routes to process at once] [maximum route-add retries]" << std::endl;
         return 1;
     }
 
@@ -50,6 +50,7 @@ int main (int argc, char *argv[])
     const uint extraTTL=(argc>9)?(uint)std::atoi(argv[9]):(uint)(120*60);
     const int mgIntervalSec=(argc>10)?std::atoi(argv[10]):5;
     const int mgPercent=(argc>11)?std::atoi(argv[11]):5;
+    const int addRetryCnt=(argc>12)?std::atoi(argv[12]):5;
 
     bool gw4Set=false;
     bool gw6Set=false;
@@ -102,13 +103,19 @@ int main (int argc, char *argv[])
         return 1;
     }
 
+    if(addRetryCnt<1)
+    {
+        logger.Error() << "route-add max retries count is invalid" << std::endl;
+        return 1;
+    }
+
     //configure essential stuff
     MessageBroker messageBroker;
     ShutdownHandler shutdownHandler;
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
-    RoutingManager routingMgr(logger,argv[3],gw4Set?gateway4:IPAddress(),gw6Set?gateway6:IPAddress(),extraTTL,mgIntervalSec,mgPercent,metric,ksMetric);
+    RoutingManager routingMgr(logger,argv[3],gw4Set?gateway4:IPAddress(),gw6Set?gateway6:IPAddress(),extraTTL,mgIntervalSec,mgPercent,metric,ksMetric,addRetryCnt);
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(logger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
     NetDevTracker tracker(logger,messageBroker,timeoutTv,metric,argv[3]);
