@@ -2,11 +2,17 @@
 #define STDIOLOGGER_H
 
 #include "ILogger.h"
+#include <mutex>
 
-class StdioLogger final : public ILogger
+class StdioLogger : public ILogger
 {
+    private:
+        const timespec &initialTime;
+        const char * const loggerName;
+        std::mutex &loggerLock;
+    protected:
+        StdioLogger(const timespec &initialTime, const char * const name, std::mutex &ioLock);
     public:
-        StdioLogger();
         std::ostream& Info() final;
         std::ostream& Warning() final;
         std::ostream& Error() final;
