@@ -167,10 +167,11 @@ void RoutingManager::_PushRoute(const int seq, const Route &route)
     msg.nl.nlmsg_seq=seq;
     msg.nl.nlmsg_flags=NLM_F_REQUEST|NLM_F_CREATE|NLM_F_REPLACE;
     msg.nl.nlmsg_type=RTM_NEWROUTE;
+
     msg.rt.rtm_table=RT_TABLE_MAIN;
     msg.rt.rtm_scope=RT_SCOPE_UNIVERSE;
     msg.rt.rtm_type=RTN_UNICAST;
-    //msg.rt.rtm_protocol=RTPROT_STATIC; //TODO: check do we really need this
+    msg.rt.rtm_protocol=RTPROT_STATIC; //TODO: check do we really need this
     msg.rt.rtm_dst_len=route.dest.isV6?128:32;
     msg.rt.rtm_family=route.dest.isV6?AF_INET6:AF_INET;
 
