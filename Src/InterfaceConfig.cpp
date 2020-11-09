@@ -1,5 +1,13 @@
 #include "InterfaceConfig.h"
 
+InterfaceConfig::InterfaceConfig():
+    isUp(false),
+    isPtP(false),
+    localIPs(),
+    remoteIPs()
+{
+}
+
 InterfaceConfig::InterfaceConfig(const InterfaceConfig& other):
     InterfaceConfig(other.isUp,other.isPtP,other.localIPs,other.remoteIPs)
 {
@@ -49,4 +57,29 @@ InterfaceConfig InterfaceConfig::SetState(const bool _isUp) const
 InterfaceConfig InterfaceConfig::SetType(const bool _isPtP) const
 {
     return InterfaceConfig(isUp,_isPtP,localIPs,remoteIPs);
+}
+
+std::ostream& operator<<(std::ostream& stream, const InterfaceConfig& target)
+{
+    stream<<"isUp="<<target.isUp<<",isPtP="<<target.isPtP;
+    stream<<",localIPs={";
+    bool first=false;
+    for(const auto &ip: target.localIPs)
+    {
+        if(first)
+            stream<<",";
+        stream<<ip;
+        first=true;
+    }
+    stream<<"},remoteIPs={";
+    first=false;
+    for(const auto &ip: target.remoteIPs)
+    {
+        if(first)
+            stream<<",";
+        stream<<ip;
+        first=true;
+    }
+    stream<<"}";
+    return stream;
 }

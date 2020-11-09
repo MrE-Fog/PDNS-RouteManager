@@ -3,10 +3,12 @@
 
 #include "IPAddress.h"
 #include <set>
+#include <iostream>
 
 class InterfaceConfig
 {
     public:
+        InterfaceConfig();
         InterfaceConfig(const InterfaceConfig &other);
         InterfaceConfig(const bool isUp, const bool isPtP, const std::set<IPAddress> &localIPs, const std::set<IPAddress> &remoteIPs);
         const bool isUp;
@@ -20,6 +22,8 @@ class InterfaceConfig
         InterfaceConfig DelRemoteIP(const IPAddress &ip) const;
         InterfaceConfig SetState(const bool isUp) const;
         InterfaceConfig SetType(const bool isPtP) const;
+
+        friend std::ostream& operator<<(std::ostream& stream, const InterfaceConfig& target);
 };
 
 #endif // INTERFACECONFIG_H
