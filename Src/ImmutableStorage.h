@@ -10,8 +10,8 @@ template <class T> class ImmutableStorage
     public:
         ImmutableStorage(const T &payload) {storage.push_back(payload);}
         T Get() const { return storage.at(0); }
-        void Store(const T &payload) { storage.clear(); storage.push_back(payload); }
-        ImmutableStorage<T>& operator=(const T &payload) {Store(payload); return *this;}
+        void Set(const T &payload) { storage.clear(); storage.push_back(payload); }
+        ImmutableStorage<T>& operator=(const T &payload) {Set(payload); return *this;}
 };
 
 #endif // IMMUTABLESTORAGE_H
