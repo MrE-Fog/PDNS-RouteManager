@@ -159,9 +159,9 @@ void RoutingManager::_ProcessPendingInserts()
     {
         //TODO: initiate remove of currently expired routes
         //re-add routes with valid expiration times
-        _PushRoute(el.first,true); //push blackhole route
+        _PushRoute(el.first,true); //push blackhole route first
         if(ifCfg.Get().isUp)
-            _PushRoute(el.first,false); //push regular route
+            _PushRoute(el.first,false); //push regular route next
     }
 }
 
@@ -172,10 +172,6 @@ void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
     else
         logger.Info()<<"Pushing routing rule for: "<<ip<<std::endl;
 
-    //TODO: logic for blackhole route
-    if(blackhole)
-        return;
-
     RouteMsg msg={};
 
     msg.nl.nlmsg_len=NLMSG_LENGTH(sizeof(rtmsg));
@@ -184,7 +180,7 @@ void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
 
     msg.rt.rtm_table=RT_TABLE_MAIN;
     msg.rt.rtm_scope=RT_SCOPE_UNIVERSE;
-    msg.rt.rtm_type=RTN_UNICAST;
+    msg.rt.rtm_type=blackhole?RTN_BLACKHOLE:RTN_UNICAST;
     //msg.rt.rtm_flags=RTM_F_NOTIFY;
     msg.rt.rtm_protocol=RTPROT_STATIC; //TODO: check do we really need this
     msg.rt.rtm_dst_len=ip.isV6?128:32;
@@ -200,10 +196,11 @@ void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
     AddRTA(&msg.nl,RTA_OIF,&ifIdx,sizeof(ifIdx));
 
     //set metric/priority
-    AddRTA(&msg.nl,RTA_PRIORITY,&metric,sizeof(metric));
+    int prio=blackhole?ksMetric:metric;
+    AddRTA(&msg.nl,RTA_PRIORITY,&prio,sizeof(prio));
 
     //add gateway
-    if(!ifCfg.Get().isPtP)
+    if(!blackhole && !ifCfg.Get().isPtP)
     {
         if(gateway4.isValid && !ip.isV6)
         {
