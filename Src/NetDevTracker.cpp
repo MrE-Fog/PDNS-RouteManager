@@ -19,7 +19,7 @@
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 class NetDevUpdateMessage: public INetDevUpdateMessage { public: NetDevUpdateMessage(InterfaceConfig _config):INetDevUpdateMessage(_config){} };
 
-NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const timeval &_timeout, const char* const _ifname):
+NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const char* const _ifname):
     ifname(_ifname),
     timeout(_timeout),
     logger(_logger),
