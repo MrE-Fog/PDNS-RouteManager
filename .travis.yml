@@ -1,0 +1,22 @@
+language: cpp
+
+os: linux
+
+git:
+  depth: 1
+
+stage_test: &test
+  stage: "Build test"
+  script: cmake . && make && make install
+
+jobs:
+  include:
+    - <<: *test
+      os: linux
+      dist: focal
+    - <<: *test
+      os: linux
+      dist: bionic
+    - <<: *test
+      os: linux
+      dist: xenial
