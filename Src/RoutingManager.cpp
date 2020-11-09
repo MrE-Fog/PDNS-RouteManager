@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstring>
 #include <cerrno>
+#include <vector>
 
 #include <unistd.h>
 #include <linux/netlink.h>
@@ -155,21 +156,60 @@ void RoutingManager::_ProcessPendingInserts()
     //refuse to do anything if netlink socket is not initialized
     if(!started)
         return;
+    if(ifCfg.Get().isUp)
+    {
+        //get list of expired pendingRetries
+        std::vector<IPAddress> expiredRetries;
+        for (auto const &el : pendingRetries)
+            if(el.second>=addRetryCount)
+                expiredRetries.push_back(el.first);
+        //consider all expired retries as activated - we do all we can to install that routes
+        for (auto const &el : expiredRetries)
+        {
+            logger.Warning()<<"Giving up on receiving route-added confirmation for: "<<el<<std::endl;
+            _FinalizeRouteInsert(el);
+        }
+    }
+
+    //re-add pending routes
     for (auto const &el : pendingInserts)
     {
-        //TODO: initiate remove of currently expired routes
-        //re-add routes with valid expiration times
-        _PushRoute(el.first,true); //push blackhole route first
+        //push blackhole route in any case, to make the killswitch that will work if tracked-interface is down
+        _PushRoute(el.first,true);
         if(ifCfg.Get().isUp)
-            _PushRoute(el.first,false); //push regular route next
+        {
+            //push actual route-rule only if network is running
+            _PushRoute(el.first,false);
+            //increase retry-counter
+            auto rIT=pendingRetries.find(el.first);
+            if(rIT!=pendingRetries.end())
+                pendingRetries[el.first]=rIT->second+1;
+            else
+                pendingRetries.insert({el.first,0});
+        }
     }
+}
+
+void RoutingManager::_FinalizeRouteInsert(const IPAddress& dest)
+{
+    //if there are no pendingInserts record for this IP, show warning
+    auto pIT=pendingInserts.find(dest);
+    uint64_t expiration=curTime.load()+extraTTL;
+    if(pIT==pendingInserts.end())
+        logger.Warning()<<"No pending route-rule insert found for: "<<dest<<std::endl; //route without pending-insert will me created with minimum ttl
+    else
+    {
+        expiration=pIT->second;
+        pendingInserts.erase(dest);
+        pendingRetries.erase(dest);
+    }
+    activeRoutes[dest]=expiration; //move rule to activeRoutes
+    pendingExpires.insert({expiration,dest}); //add pending insert record, for route-management task
 }
 
 void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
 {
-    if(blackhole)
-        logger.Info()<<"Pushing blackhole rule for: "<<ip<<std::endl;
-    else
+    if(!blackhole)
         logger.Info()<<"Pushing routing rule for: "<<ip<<std::endl;
 
     RouteMsg msg={};
@@ -239,7 +279,6 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
             logger.Info()<<"Already installed route-rule detected, updating expiration time for: "<<dest<<std::endl;
             activeRoutes[dest]=expirationTime;
             pendingExpires.insert({expirationTime,dest});
-
         }
         else
             logger.Warning()<<"Already installed route-rule detected for: "<<dest<<std::endl;
@@ -259,31 +298,32 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
     //add new pending route, or update it's expiration time
     auto pIT=pendingInserts.find(dest);
     if(pIT==pendingInserts.end()||pIT->second<expirationTime)
+    {
         pendingInserts[dest]=expirationTime;
+        pendingRetries.erase(dest);//cleanup retry counter
+    }
 }
 
 void RoutingManager::ConfirmRouteAdd(const IPAddress &dest)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     logger.Info()<<"Processing route-added confirmation for: "<<dest<<std::endl;
-    //if there are no pendingInserts record for this IP, show warning
-    auto pIT=pendingInserts.find(dest);
-    uint64_t expiration=curTime.load()+extraTTL;
-    if(pIT==pendingInserts.end())
-        logger.Warning()<<"No pending route-rule insert found for: "<<dest<<std::endl;
-    else
-    {
-        expiration=pIT->second;
-        pendingInserts.erase(dest);
-    }
-    //move rule to activeRoutes, or create rule with minumum allowed ttl
-    activeRoutes[dest]=expiration;
-    pendingExpires.insert({expiration,dest});
+    _FinalizeRouteInsert(dest);
 }
 
-void RoutingManager::ConfirmRouteDel(const IPAddress& dest)
+void RoutingManager::ConfirmRouteDel(const IPAddress &dest)
 {
-    //TODO:
+    const std::lock_guard<std::mutex> lock(opLock);
+    logger.Info()<<"Processing route-removed confirmation for: "<<dest<<std::endl;
+    //check for unexpected route-removal
+    auto aIT=activeRoutes.find(dest);
+    if(aIT!=activeRoutes.end())
+    {
+        logger.Warning()<<"Pending re-add for unexpectedly removed route for: "<<dest<<std::endl;
+        pendingInserts.insert({dest,aIT->second});
+        pendingRetries.erase(dest);
+        activeRoutes.erase(dest);
+    }
 }
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
