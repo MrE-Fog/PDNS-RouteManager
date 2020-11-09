@@ -3,7 +3,6 @@
 #include "NetDevTracker.h"
 #include "DNSReceiver.h"
 #include "MessageBroker.h"
-#include "SignalHandler.h"
 #include "ShutdownHandler.h"
 
 #include <iostream>
@@ -11,12 +10,19 @@
 #include <chrono>
 #include <cstring>
 #include <cstdlib>
-
+#include <csignal>
+#include <string>
 
 int main (int argc, char *argv[])
 {
-    const int timeoutMs=250; //TODO: read timeouts from config
-    const timeval timeoutTv = { timeoutMs/1000, (timeoutMs-timeoutMs/1000*1000)*1000 };
+    //set timeouts used by background workers for network operations and some other events
+    //increasing this time will slow down reaction to some internal and external events
+    //decreasing this time too much will cause high cpu usage
+    const int timeoutMs=500;
+    const timeval timeoutTv={timeoutMs/1000,(timeoutMs-timeoutMs/1000*1000)*1000};
+
+    //timeout for main thread waiting for external signals
+    const timespec sigTs={2,0};
 
     StdioLogger logger;
 
@@ -40,7 +46,6 @@ int main (int argc, char *argv[])
 
     //configure essential stuff
     MessageBroker messageBroker;
-    SignalHandler::Setup();
     ShutdownHandler shutdownHandler;
     messageBroker.AddSubscriber(shutdownHandler);
 
@@ -48,24 +53,42 @@ int main (int argc, char *argv[])
     DNSReceiver dnsReceiver(logger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
     NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
 
+    //create sigset_t struct with signals
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    if(sigaddset(&sigset,SIGINT)!=0||sigaddset(&sigset,SIGHUP)!=0||sigaddset(&sigset,SIGTERM)!=0||sigaddset(&sigset,SIGUSR1)!=0||sigaddset(&sigset,SIGUSR2)!=0||pthread_sigmask(SIG_BLOCK,&sigset,nullptr)!=0)
+    {
+        logger.Error()<<"Failed to setup signal-handling"<<std::endl;
+        return 1;
+    }
+
     //start background workers, or perform post-setup init
     dnsReceiver.Startup();
     tracker.Startup();
 
     while(true)
     {
-        //TODO: use sigwait/sigtimedwait and self-signalling (optional) instead of sleep+poll for shutdown
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        auto signal=sigtimedwait(&sigset,nullptr,&sigTs);
+        auto error=errno;
+        if(signal<0 && error!=EAGAIN)
+        {
+            logger.Error()<<"Error while handling incoming signal: "<<strerror(error)<<std::endl;
+            break;
+        }
+        else if(signal>0)
+        {
+            logger.Info()<< "Pending shutdown by receiving signal: "<<strsignal(signal)<<std::endl;
+            break;
+        }
+
         if(shutdownHandler.IsShutdownRequested())
         {
             if(shutdownHandler.GetEC()!=0)
                 logger.Error() << "One of background worker was failed, shuting down" << std::endl;
             else
-                logger.Info() << "Shuting down gracefully by signal from background worker" << std::endl;
+                logger.Info() << "Shuting down gracefully by request from background worker" << std::endl;
             break;
         }
-        if(SignalHandler::IsSignalReceived())
-            break;
     }
 
     //request shutdown of background workers
