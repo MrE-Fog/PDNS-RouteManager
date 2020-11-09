@@ -5,6 +5,11 @@ os: linux
 git:
   depth: 1
 
+addons:
+  apt:
+    packages:
+    - libprotobuf-dev
+
 stage_test: &test
   stage: "Build test"
   script: cmake . && make && make install
