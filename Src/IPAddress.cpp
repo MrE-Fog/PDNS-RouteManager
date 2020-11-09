@@ -7,6 +7,16 @@ IPAddress::IPAddress():
     isValid(false),
     isV6(false)
 {
+    std::memset((void*)ip,0,IP_ADDR_LEN);
+}
+
+IPAddress::IPAddress(const sockaddr* const sa):
+    isValid(sa->sa_family==AF_INET||sa->sa_family==AF_INET6),
+    isV6(sa->sa_family==AF_INET6)
+{
+    std::memset((void*)ip,0,IP_ADDR_LEN);
+    if(isValid)
+        std::memcpy((void*)ip,isV6?(const void*)&(((const sockaddr_in6*)sa)->sin6_addr):(const void*)&(((const sockaddr_in*)sa)->sin_addr),isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
 }
 
 IPAddress::IPAddress(const IPAddress& other):
