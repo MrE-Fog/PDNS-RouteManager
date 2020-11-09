@@ -11,19 +11,32 @@
 
 class IPAddress
 {
-    private:
-        unsigned char ip[IP_ADDR_LEN];
     public:
-        const bool isValid;
-        const bool isV6;
-
         IPAddress();
         IPAddress(const sockaddr * const sa);
         IPAddress(const IPAddress &other);
         IPAddress(const rtattr * const rta);
-        bool Equals(const IPAddress &other);
+        bool Equals(const IPAddress &other) const;
+        bool Less(const IPAddress &other) const;
+        bool Greater(const IPAddress &other) const;
+        bool operator<(const IPAddress &other) const;
+        bool operator==(const IPAddress &other) const;
+        bool operator>(const IPAddress &other) const;
+        bool operator>=(const IPAddress &other) const;
+        bool operator<=(const IPAddress &other) const;
 
         friend std::ostream& operator<<(std::ostream& stream, const IPAddress& target);
+
+        const bool isValid;
+        const bool isV6;
+    private:
+        struct RawIP
+        {
+            RawIP();
+            RawIP(const void * const source, const size_t len);
+            unsigned char data[IP_ADDR_LEN];
+        };
+        const RawIP ip;
 };
 
 #endif // IPADDRESS_H
