@@ -50,7 +50,7 @@ int main (int argc, char *argv[])
     const uint extraTTL=(argc>9)?(uint)std::atoi(argv[9]):(uint)(120*60);
     const int mgIntervalSec=(argc>10)?std::atoi(argv[10]):5;
     const int mgPercent=(argc>11)?std::atoi(argv[11]):5; //management worker run every 5 seconds (approximately)
-    const int addRetryCnt=(argc>12)?std::atoi(argv[12]):18; //with 5 seconds interval it gives us 90 seconds
+    const int addRetryCnt=(argc>12)?std::atoi(argv[12]):60; //with 5 seconds interval it gives us 300 seconds
 
     bool gw4Set=false;
     bool gw6Set=false;

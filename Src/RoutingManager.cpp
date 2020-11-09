@@ -179,14 +179,13 @@ void RoutingManager::_ProcessPendingInserts()
         _ProcessRoute(el.first,true,true);
         if(ifCfg.Get().isUp)
         {
-            //push actual route-rule only if network is running
-            _ProcessRoute(el.first,false,true);
             //increase retry-counter
             auto rIT=pendingRetries.find(el.first);
-            if(rIT!=pendingRetries.end())
-                pendingRetries[el.first]=rIT->second+1;
-            else
-                pendingRetries.insert({el.first,0});
+            auto insertTry=(rIT==pendingRetries.end())?2:rIT->second+1;
+            pendingRetries[el.first]=insertTry;
+            //push actual route-rule only if network is running
+            logger.Info()<<"Retrying push routing rule for: "<<el.first<<" try: "<<insertTry<<std::endl;
+            _ProcessRoute(el.first,false,true);
         }
     }
 }
@@ -210,11 +209,6 @@ void RoutingManager::_FinalizeRouteInsert(const IPAddress& dest)
 
 void RoutingManager::_ProcessRoute(const IPAddress &ip, const bool blackhole, const bool isAddRequest)
 {
-    if(!blackhole && isAddRequest)
-        logger.Info()<<"Pushing routing rule for: "<<ip<<std::endl;
-    else if(!blackhole && !isAddRequest)
-        logger.Info()<<"Removing routing rule for: "<<ip<<std::endl;
-
     RouteMsg msg={};
 
     msg.nl.nlmsg_len=NLMSG_LENGTH(sizeof(rtmsg));
@@ -287,10 +281,11 @@ void RoutingManager::_ProcessStaleRoutes()
         //check time mark is valid
         auto aIT=activeRoutes.find(tIT->second);
         if(aIT==activeRoutes.end()||aIT->second>tIT->first)
-            logger.Info()<<"Removing invalid expire mark for ip: "<<tIT->second<<std::endl;
+            logger.Info()<<"Removing invalid expire mark: "<<tIT->first<<" for ip: "<<tIT->second<<std::endl;
         else
         {
             _ProcessRoute(aIT->first,false,false); //commence route removal
+            logger.Info()<<"Removing slate routing rule for: "<<aIT->first<<std::endl;
             _ProcessRoute(aIT->first,true,false); //commence blackhole route removal
             activeRoutes.erase(aIT); //remove from active routes
         }
@@ -312,7 +307,7 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
         //if so - update expiration time, and return
         if(aIT->second<expirationTime)
         {
-            logger.Info()<<"Already installed route-rule detected, updating expiration time for: "<<dest<<std::endl;
+            logger.Info()<<"Already installed route-rule detected, updating expiration time: "<<expirationTime<<" for: "<<dest<<std::endl;
             activeRoutes[dest]=expirationTime;
             pendingExpires.insert({expirationTime,dest});
         }
@@ -328,7 +323,10 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
         _ProcessRoute(dest,true,true);
         //push new route immediately, only if network is up and running
         if(ifCfg.Get().isUp)
+        {
+            logger.Info()<<"Pushing new routing rule for: "<<dest<<" with expiration time:"<<expirationTime<<std::endl;
             _ProcessRoute(dest,false,true);
+        }
     }
 
     //add new pending route, or update it's expiration time
