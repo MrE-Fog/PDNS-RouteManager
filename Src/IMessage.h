@@ -7,6 +7,7 @@ enum MsgType
 {
     MSG_SHUTDOWN,
     MSG_NETDEV_UPDATE,
+    MSG_ROUTE_REQUEST,
 };
 
 class IMessage
@@ -31,6 +32,15 @@ class INetDevUpdateMessage : public IMessage
         INetDevUpdateMessage(InterfaceConfig &_config):IMessage(MSG_NETDEV_UPDATE),config(_config){}
     public:
         const InterfaceConfig config;
+};
+
+class IRouteRequestMessage : public IMessage
+{
+    protected:
+        IRouteRequestMessage(const IPAddress &_ip, const uint _ttl):IMessage(MSG_ROUTE_REQUEST),ip(_ip),ttl(_ttl){}
+    public:
+        const IPAddress &ip;
+        const uint ttl;
 };
 
 #endif // IMESSAGE_H

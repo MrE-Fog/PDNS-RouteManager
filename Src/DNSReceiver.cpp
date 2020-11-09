@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
+class RouteRequestMessage: public IRouteRequestMessage { public: RouteRequestMessage(const IPAddress &_ip, const uint _ttl):IRouteRequestMessage(_ip,_ttl){} };
 
 DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeval &_timeout, const IPAddress _listenAddr, const int _port, const bool _useByteSwap):
     logger(_logger),
@@ -250,7 +251,7 @@ void DNSReceiver::Worker()
                                     else
                                     {
                                         logger.Info()<<"Valid response decoded -> name="<<name<<",ip="<<ip<<",type="<<type<<",ttl="<<ttl<<std::endl;
-                                        //TODO: send provided info to the routing service
+                                        sender.SendMessage(this,RouteRequestMessage(ip,ttl));
                                     }
                                 }
                             }
