@@ -85,11 +85,9 @@ void NetDevTracker::Worker()
         msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
 
         auto len = recvmsg(sock, &msg, 0);
-        for (auto *nh = (nlmsghdr*)buf; NLMSG_OK (nh, len); nh = NLMSG_NEXT (nh, len))
+        for (auto *nh = (nlmsghdr*)buf; NLMSG_OK (nh, len) && nh->nlmsg_type != NLMSG_DONE; nh = NLMSG_NEXT (nh, len))
         {
-            if (nh->nlmsg_type == NLMSG_DONE) // The end of multipart message
-                break;
-            else if (nh->nlmsg_type == NLMSG_ERROR)
+            if (nh->nlmsg_type == NLMSG_ERROR)
             {
                 auto error=errno;
                 logger.Error()<<"Error received from netlink : "<<strerror(error)<<std::endl;

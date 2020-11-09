@@ -47,7 +47,7 @@ int main (int argc, char *argv[])
     tracker.Startup();
 
     //TODO: wait for termination signal(s), or call for shutdown
-    int rounds=20; //for tests, remove
+    int rounds=40; //for tests, remove
     while(true)
     {
         if(rounds<1)
