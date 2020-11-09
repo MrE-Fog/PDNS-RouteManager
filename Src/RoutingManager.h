@@ -52,6 +52,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         void _ProcessPendingInserts();
         void _FinalizeRouteInsert(const IPAddress &dest);
         void _PushRoute(const IPAddress& ip, bool blackhole);
+        void _ProcessStaleRoutes();
     public:
         RoutingManager(ILogger &logger, const char * const ifname, const IPAddress &gateway4, const IPAddress &gateway6, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric, const int addRetryCount);
         //WorkerBase

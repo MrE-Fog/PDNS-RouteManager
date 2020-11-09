@@ -132,8 +132,8 @@ void RoutingManager::ProcessNetDevUpdate(const InterfaceConfig& newConfig)
 void RoutingManager::ManageRoutes()
 {
     const std::lock_guard<std::mutex> lock(opLock);
-    _ProcessPendingInserts(); //process pending routes if any
-    //TODO: initiate remove of stale routes, up to max percent
+    _ProcessPendingInserts();
+    _ProcessStaleRoutes();
 }
 
 #define NLMSG_TAIL(nmsg) ((struct rtattr *) (((unsigned char *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
@@ -263,6 +263,39 @@ void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
     //send netlink message:
     if(send(sock,&msg,sizeof(RouteMsg),0)!=sizeof(RouteMsg))
         logger.Error()<<"Failed to send route via netlink: "<<strerror(errno)<<std::endl;
+}
+
+void RoutingManager::_ProcessStaleRoutes()
+{
+    //get pendingExpires length
+    auto expCnt=pendingExpires.size();
+    if(expCnt<1)
+        return;
+    auto remCnt=(int)((float)expCnt/100.0f*(float)mgPercent);
+    if(remCnt<1)
+        remCnt=1;
+    while(remCnt>0)
+    {
+        auto tIT=pendingExpires.begin();
+        if(curTime.load()<tIT->first)
+        {
+            logger.Info()<<"time diff: "<<tIT->first-curTime.load()<<std::endl;
+            return;
+        }
+        //check time mark is valid
+        auto aIT=activeRoutes.find(tIT->second);
+        if(aIT==activeRoutes.end()||aIT->second>tIT->first)
+            logger.Info()<<"Removing invalid expire mark for ip: "<<tIT->second<<std::endl;
+        else
+        {
+            //TODO: commence route removal
+            //TODO: commence blackhole route removal
+            activeRoutes.erase(aIT); //remove from active routes
+        }
+        //erase pending element
+        pendingExpires.erase(tIT);
+        remCnt--;
+    }
 }
 
 void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
