@@ -22,7 +22,8 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         //constants and thread-safe stuff
         ILogger &logger;
         const char * const ifname;
-        const IPAddress gateway;
+        const IPAddress gateway4;
+        const IPAddress gateway6;
         const uint extraTTL;
         const int mgIntervalSec;
         const int mgPercent;
@@ -47,8 +48,9 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         uint64_t _UpdateCurTime();
         uint32_t _UpdateSeqNum();
         void _ProcessPendingInserts();
+        void _PushRoute(const int seq, const Route &route);
     public:
-        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric);
+        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress &gateway4, const IPAddress &gateway6, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric);
         //WorkerBase
         void Worker() final;
         void OnShutdown() final;

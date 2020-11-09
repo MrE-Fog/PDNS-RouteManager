@@ -30,7 +30,7 @@ int main (int argc, char *argv[])
     //TODO: add sane option parsing
     if(argc<4)
     {
-        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [killswitch metric] [use byte swap: true|false] [gateway ip] [extratTTL] [management interval] [max percent of routes to manage in a single management operation]" << std::endl;
+        logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [killswitch metric] [use byte swap: true|false] [gateway ipv4] [gateway ipv6] [extratTTL] [management interval] [max percent of routes to manage in a single management operation]" << std::endl;
         return 1;
     }
 
@@ -45,10 +45,14 @@ int main (int argc, char *argv[])
     const int metric=(argc>4)?std::atoi(argv[4]):100;
     const int ksMetric=(argc>5)?std::atoi(argv[5]):101;
     const bool useByteSwap=(argc>6)?(std::strncmp(argv[6],"true",4)==0):false;
-    const IPAddress gateway=(argc>7)?IPAddress(argv[7]):IPAddress("0.0.0.0");
-    const uint extraTTL=(argc>8)?(uint)std::atoi(argv[8]):(uint)(120*60);
-    const int mgIntervalSec=(argc>9)?std::atoi(argv[9]):5;
-    const int mgPercent=(argc>10)?std::atoi(argv[10]):5;
+    const IPAddress gateway4=(argc>7)?IPAddress(argv[7]):IPAddress("127.0.0.1");
+    const IPAddress gateway6=(argc>8)?IPAddress(argv[8]):IPAddress("::1");
+    const uint extraTTL=(argc>9)?(uint)std::atoi(argv[9]):(uint)(120*60);
+    const int mgIntervalSec=(argc>10)?std::atoi(argv[10]):5;
+    const int mgPercent=(argc>11)?std::atoi(argv[11]):5;
+
+    bool gw4Set=false;
+    bool gw6Set=false;
 
     if(metric<1)
     {
@@ -62,11 +66,23 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-    if(!gateway.isValid)
+    if(!gateway4.isValid||gateway4.isV6)
     {
-        logger.Error() << "gateway address is invalid!" << std::endl;
+        logger.Error() << "ipv4 gateway address is invalid!" << std::endl;
         return 1;
     }
+
+    if(!gateway4.Equals(IPAddress("127.0.0.1")))
+        gw4Set=true;
+
+    if(!gateway6.isValid||!gateway6.isV6)
+    {
+        logger.Error() << "ipv6 gateway address is invalid!" << std::endl;
+        return 1;
+    }
+
+    if(!gateway6.Equals(IPAddress("::1")))
+        gw6Set=true;
 
     if(extraTTL<1)
     {
@@ -92,7 +108,7 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
-    RoutingManager routingMgr(logger,argv[3],gateway,extraTTL,mgIntervalSec,mgPercent,metric,ksMetric);
+    RoutingManager routingMgr(logger,argv[3],gw4Set?gateway4:IPAddress(),gw6Set?gateway6:IPAddress(),extraTTL,mgIntervalSec,mgPercent,metric,ksMetric);
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(logger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
     NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
