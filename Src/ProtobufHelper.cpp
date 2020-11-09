@@ -1,4 +1,5 @@
 #include "ProtobufHelper.h"
+#include "IPAddress.h"
 #include "dnsmessage.pb.h"
 
 #include <fstream>
@@ -23,11 +24,41 @@ void ProtobufHelper::Test(const char* const filename)
     if(!file.is_open())
          logger.Error()<<"file not opened!"<<std::endl;
     uint16_t len;
+    char msgBuff[8192];
+    PBDNSMessage message;
+    bool result=false;
+
     file.read((char*)(&len),2);
     len=SwapU16(len);
-    char msgBuff[8192];
     file.read(msgBuff,len);
-    PBDNSMessage message;
-    auto result=message.ParseFromArray(msgBuff,len);
-    logger.Info()<<"result "<<result<<std::endl;
+    result=message.ParseFromArray(msgBuff,len);
+    logger.Info()<<"parse result "<<result<<std::endl;
+
+    if(message.has_response())
+    {
+        auto size=message.response().rrs_size();
+        for(auto el=0;el<size;++el)
+        {
+            auto rr=message.response().rrs(el);
+            IPAddress ip(rr.rdata());
+            logger.Info()<<"decoded address "<<ip<<std::endl;
+        }
+    }
+
+    file.read((char*)(&len),2);
+    len=SwapU16(len);
+    file.read(msgBuff,len);
+    result=message.ParseFromArray(msgBuff,len);
+    logger.Info()<<"parse result "<<result<<std::endl;
+
+    if(message.has_response())
+    {
+        auto size=message.response().rrs_size();
+        for(auto el=0;el<size;++el)
+        {
+            auto rr=message.response().rrs(el);
+            IPAddress ip(rr.rdata());
+            logger.Info()<<"decoded address "<<ip<<std::endl;
+        }
+    }
 }
