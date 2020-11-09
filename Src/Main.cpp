@@ -4,6 +4,7 @@
 #include "MessageBroker.h"
 #include "SignalHandler.h"
 #include "ShutdownHandler.h"
+#include "ProtobufHelper.h"
 
 #include <iostream>
 #include <thread>
@@ -20,6 +21,10 @@ int main (int argc, char *argv[])
         logger.Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev>" << std::endl;
         return 1;
     }
+
+    //test protobuf
+    ProtobufHelper pbHelper(logger);
+    pbHelper.Test("../../dnsdist.pb.example");
 
     //configure essential stuff
     MessageBroker messageBroker;
