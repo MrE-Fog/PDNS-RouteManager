@@ -7,20 +7,22 @@
 
 using namespace std;
 
-int usage(const char * const self)
+int usage(ILogger &logger, const char * const self)
 {
-    cerr << "Usage: " << self << " <listen ip-addr> <port> <target netdev>" << endl;
+    logger.Error() << "Usage: " << self << " <listen ip-addr> <port> <target netdev>" << endl;
     return 1;
 }
 
 int main (int argc, char *argv[])
 {
+    StdioLogger logger;
+
     if(argc!=3)
-        return usage(argv[0]);
+        return usage(logger,argv[0]);
     try
     {
         //create main worker-instances
-        NetDevTracker tracker;
+        NetDevTracker tracker(logger);
 
         //init
         tracker.Startup();

@@ -7,9 +7,9 @@
 class NetDevTracker final : public IWorker
 {
     private:
-        const ILogger& logger;
+        const ILogger &logger;
     public:
-        NetDevTracker(ILogger& logger);
+        NetDevTracker(const ILogger &logger);
         void Startup() final;
         void Shutdown() final;
 };

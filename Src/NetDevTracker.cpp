@@ -1,7 +1,7 @@
 #include "NetDevTracker.h"
 
-NetDevTracker::NetDevTracker(ILogWriter& logger) :
-    logger(logger)
+NetDevTracker::NetDevTracker(const ILogger &_logger) :
+    logger(_logger)
 {
 
 }
