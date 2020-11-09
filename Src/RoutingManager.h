@@ -5,7 +5,6 @@
 #include "IPAddress.h"
 #include "InterfaceConfig.h"
 #include "ImmutableStorage.h"
-#include "Route.h"
 #include "IMessageSubscriber.h"
 #include "WorkerBase.h"
 
