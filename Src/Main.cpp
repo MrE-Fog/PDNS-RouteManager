@@ -16,7 +16,7 @@
 
 int main (int argc, char *argv[])
 {
-    const int timeoutMs=500; //TODO: read timeouts from config
+    const int timeoutMs=300; //TODO: read timeouts from config
     const timeval timeoutTv = { timeoutMs/1000, (timeoutMs-timeoutMs/1000*1000)*1000 };
 
     StdioLogger logger;

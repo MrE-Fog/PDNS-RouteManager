@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
@@ -52,6 +53,8 @@ void DNSReceiver::Worker()
         return;
     }
 
+    auto dTimeout=std::chrono::seconds(timeout.tv_sec)+std::chrono::microseconds(timeout.tv_usec);
+
     while(!shutdownPending.load())
     {
         //create listen socket
@@ -62,10 +65,35 @@ void DNSReceiver::Worker()
             return;
         }
 
-        bool bindComplete=false;
-        while(!bindComplete )
+        //tune some some options
+        int sockReuseAddrEnabled=1;
+        if (setsockopt(lSockFd, SOL_SOCKET, SO_REUSEADDR, &sockReuseAddrEnabled, sizeof(int))!=0)
         {
-            //check for shutdown
+            HandleError(errno,"Failed to set SO_REUSEADDR option: ");
+            return;
+        }
+#ifdef SO_REUSEPORT
+        int sockReusePortEnabled=1;
+        if (setsockopt(lSockFd, SOL_SOCKET, SO_REUSEPORT, &sockReusePortEnabled, sizeof(int))!=0)
+        {
+            HandleError(errno,"Failed to set SO_REUSEPORT option: ");
+            return;
+        }
+#endif
+
+        linger lLinger={1,0};
+        if (setsockopt(lSockFd, SOL_SOCKET, SO_LINGER, &lLinger, sizeof(linger))!=0)
+        {
+            HandleError(errno,"Failed to set SO_LINGER option: ");
+            return;
+        }
+
+        bool bindFailWarned=false;
+        bool bindComplete=false;
+        while(!bindComplete && !shutdownPending.load())
+        {
+            //check for shutdown ?
+
             sockaddr_in ipv4Addr = {};
             sockaddr_in6 ipv6Addr = {};
             sockaddr *target;
@@ -73,7 +101,7 @@ void DNSReceiver::Worker()
             if(listenAddr.isV6)
             {
                 ipv6Addr.sin6_family=AF_INET6;
-                ipv6Addr.sin6_port=(unsigned short)port;
+                ipv6Addr.sin6_port=htons((unsigned short)port);
                 listenAddr.ToSA(&ipv6Addr);
                 target=(sockaddr*)&ipv6Addr;
                 len=sizeof(sockaddr_in6);
@@ -81,30 +109,88 @@ void DNSReceiver::Worker()
             else
             {
                 ipv4Addr.sin_family=AF_INET;
-                ipv4Addr.sin_port=(unsigned short)port;
+                ipv4Addr.sin_port=htons((unsigned short)port);
                 listenAddr.ToSA(&ipv4Addr);
                 target=(sockaddr*)&ipv4Addr;
                 len=sizeof(sockaddr_in);
             }
 
-            // Binding newly created socket to given IP and verification
             if (bind(lSockFd,target,len)!=0)
             {
-                //wait for some time, retry
+                if(!bindFailWarned)
+                {
+                    bindFailWarned=true;
+                    logger.Warning()<<"Failed to bind listen socket: "<<strerror(errno)<<std::endl;
+                }
+                std::this_thread::sleep_for(dTimeout);
                 continue;
             }
-            bindComplete=true;
-            //accept connection, escape this loop if failed (+wait)
-
-            //receive dnsdist packages until receive socket is receiving
-            bool recvComplete=false;
-            while(!recvComplete)
+            if (listen(lSockFd,1)!=0)
             {
-                //check for shutdown is pending
+                HandleError(errno,"Failed to setup listen socket: ");
+                return;
             }
+            logger.Info()<<"Listening for incoming connection"<<std::endl;
+            bindComplete=true;
 
-            //close receive socket
+            bool connAccepted=false;
+            while (!connAccepted && !shutdownPending.load())
+            {
+                //wait for new data ready to be read from netlink
+                fd_set set;
+                FD_ZERO(&set);
+                FD_SET(lSockFd, &set);
+                auto t = timeout;
+                auto rv = select(lSockFd+1, &set, NULL, NULL, &t);
+                if(rv==0) //no incoming connection detected
+                    continue;
+                if(rv<0)
+                {
+                    auto error=errno;
+                    if(error==EINTR)//interrupted by signal
+                        break;
+                    HandleError(error,"Error awaiting incoming connection: ");
+                    return;
+                }
+
+                //accept single connection
+                sockaddr_storage cAddr;
+                socklen_t cAddrSz = sizeof(cAddr);
+                auto cSockFd=accept(lSockFd,(sockaddr*)&cAddr,&cAddrSz);
+                if(cSockFd<1)
+                {
+                    logger.Warning()<<"Failed to accept connection: "<<strerror(errno)<<std::endl;
+                    continue;
+                }
+                linger cLinger={1,0};
+                if (setsockopt(cSockFd, SOL_SOCKET, SO_LINGER, &cLinger, sizeof(linger))!=0)
+                    logger.Warning()<<"Failed to set SO_LINGER option to client socket: "<<strerror(errno)<<std::endl;
+                connAccepted=true;
+
+                logger.Info()<<"Client connected"<<std::endl;
+                //receive dnsdist packages until receive socket is receiving
+                bool recvComplete=false;
+                while(!recvComplete && !shutdownPending.load())
+                {
+                    //check for shutdown is pending
+                    //if no new data can be read, then recvComplete=true
+                    recvComplete=true;
+                }
+
+                logger.Info()<<"Closing client connection"<<std::endl;
+                if(close(cSockFd)!=0)
+                {
+                    HandleError(errno,"Failed to close client socket: ");
+                    return;
+                }
+            }
         }
-        //close listen socket
+        if(close(lSockFd)!=0)
+        {
+            HandleError(errno,"Failed to close listen socket: ");
+            return;
+        }
     }
+
+    logger.Info()<<"Shuting down DNSReceiver worker thread"<<std::endl;
 }
