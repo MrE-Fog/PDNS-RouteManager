@@ -112,19 +112,26 @@ bool IPAddress::Equals(const IPAddress& other) const
 
 bool IPAddress::Less(const IPAddress& other) const
 {
+    auto firstFlags=10*isValid+1*isV6;
+    auto secondFlags=10*other.isValid+1*other.isV6;
     //first, compare the flags
-    if((10*isValid+1*isV6) < (10*other.isValid+1*other.isV6))
+    if(firstFlags<secondFlags)
         return true;
-    if(std::memcmp(ip.data,other.ip.data,IP_ADDR_LEN)<0)
+    //second, compare IP
+    if(firstFlags==secondFlags&&std::memcmp(ip.data,other.ip.data,IP_ADDR_LEN)<0)
         return true;
     return false;
 }
 
 bool IPAddress::Greater(const IPAddress& other) const
 {
-    if((10*isValid+1*isV6) > (10*other.isValid+1*other.isV6))
+    auto firstFlags=10*isValid+1*isV6;
+    auto secondFlags=10*other.isValid+1*other.isV6;
+    //first, compare the flags
+    if(firstFlags>secondFlags)
         return true;
-    if(std::memcmp(ip.data,other.ip.data,IP_ADDR_LEN)>0)
+    //second, compare IP
+    if(firstFlags==secondFlags&&std::memcmp(ip.data,other.ip.data,IP_ADDR_LEN)>0)
         return true;
     return false;
 }

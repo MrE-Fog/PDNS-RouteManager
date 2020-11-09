@@ -6,7 +6,7 @@
 
 #include <linux/rtnetlink.h>
 
-//TODO: re-use defines from include files
+//TODO: re-use defines from system include files
 #define IPV4_ADDR_LEN 4
 #define IPV6_ADDR_LEN 16
 #define IP_ADDR_LEN IPV6_ADDR_LEN
