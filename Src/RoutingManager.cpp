@@ -176,11 +176,11 @@ void RoutingManager::_ProcessPendingInserts()
     for (auto const &el : pendingInserts)
     {
         //push blackhole route in any case, to make the killswitch that will work if tracked-interface is down
-        _PushRoute(el.first,true);
+        _ProcessRoute(el.first,true,true);
         if(ifCfg.Get().isUp)
         {
             //push actual route-rule only if network is running
-            _PushRoute(el.first,false);
+            _ProcessRoute(el.first,false,true);
             //increase retry-counter
             auto rIT=pendingRetries.find(el.first);
             if(rIT!=pendingRetries.end())
@@ -208,16 +208,18 @@ void RoutingManager::_FinalizeRouteInsert(const IPAddress& dest)
     pendingExpires.insert({expiration,dest}); //add pending insert record, for route-management task
 }
 
-void RoutingManager::_PushRoute(const IPAddress &ip, bool blackhole)
+void RoutingManager::_ProcessRoute(const IPAddress &ip, const bool blackhole, const bool isAddRequest)
 {
-    if(!blackhole)
+    if(!blackhole && isAddRequest)
         logger.Info()<<"Pushing routing rule for: "<<ip<<std::endl;
+    else if(!blackhole && !isAddRequest)
+        logger.Info()<<"Removing routing rule for: "<<ip<<std::endl;
 
     RouteMsg msg={};
 
     msg.nl.nlmsg_len=NLMSG_LENGTH(sizeof(rtmsg));
-    msg.nl.nlmsg_flags=NLM_F_REQUEST|NLM_F_CREATE|NLM_F_REPLACE;
-    msg.nl.nlmsg_type=RTM_NEWROUTE;
+    msg.nl.nlmsg_flags=isAddRequest?(NLM_F_REQUEST|NLM_F_CREATE|NLM_F_REPLACE):NLM_F_REQUEST;
+    msg.nl.nlmsg_type=isAddRequest?RTM_NEWROUTE:RTM_DELROUTE;
 
     msg.rt.rtm_table=RT_TABLE_MAIN;
     msg.rt.rtm_scope=RT_SCOPE_UNIVERSE;
@@ -288,8 +290,8 @@ void RoutingManager::_ProcessStaleRoutes()
             logger.Info()<<"Removing invalid expire mark for ip: "<<tIT->second<<std::endl;
         else
         {
-            //TODO: commence route removal
-            //TODO: commence blackhole route removal
+            _ProcessRoute(aIT->first,false,false); //commence route removal
+            _ProcessRoute(aIT->first,true,false); //commence blackhole route removal
             activeRoutes.erase(aIT); //remove from active routes
         }
         //erase pending element
@@ -323,10 +325,10 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
     if(started)
     {
         //push blackhole route regardless of network state
-        _PushRoute(dest,true);
+        _ProcessRoute(dest,true,true);
         //push new route immediately, only if network is up and running
         if(ifCfg.Get().isUp)
-            _PushRoute(dest,false);
+            _ProcessRoute(dest,false,true);
     }
 
     //add new pending route, or update it's expiration time
