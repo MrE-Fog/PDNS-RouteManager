@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
             logger.Error()<<"Error while handling incoming signal: "<<strerror(error)<<std::endl;
             break;
         }
-        else if(signal>0)
+        else if(signal>0 && signal!=SIGUSR2) //SIGUSR2 triggered by shutdownhandler to unblock sigtimedwait
         {
             logger.Info()<< "Pending shutdown by receiving signal: "<<strsignal(signal)<<std::endl;
             break;

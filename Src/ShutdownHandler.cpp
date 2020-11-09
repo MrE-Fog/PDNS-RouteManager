@@ -1,5 +1,8 @@
 #include "ShutdownHandler.h"
 
+#include <csignal>
+#include <unistd.h>
+
 ShutdownHandler::ShutdownHandler()
 {
     shutdownRequested.store(false);
@@ -24,5 +27,8 @@ bool ShutdownHandler::ReadyForMessage(const MsgType msgType)
 void ShutdownHandler::OnMessage(const IMessage& message)
 {
     if(!shutdownRequested.exchange(true))
+    {
         ec.store(static_cast<const IShutdownMessage&>(message).ec);
+        kill(getpid(),SIGUSR2); //send SIGUSR2 signal to self, so main thread will unblock while waiting for signal
+    }
 }
