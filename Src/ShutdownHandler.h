@@ -1,7 +1,7 @@
 #ifndef SHUTDOWNHANDLER_H
 #define SHUTDOWNHANDLER_H
 
-#include "ISubscriber.h"
+#include "IMessageSubscriber.h"
 
 #include <atomic>
 

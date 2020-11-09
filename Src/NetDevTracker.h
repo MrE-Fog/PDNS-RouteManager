@@ -3,7 +3,7 @@
 
 #include "WorkerBase.h"
 #include "ILogger.h"
-#include "ISender.h"
+#include "IMessageSender.h"
 
 #include <atomic>
 

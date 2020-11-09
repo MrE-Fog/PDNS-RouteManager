@@ -1,8 +1,8 @@
 #ifndef MESSAGEBROKER_H
 #define MESSAGEBROKER_H
 
-#include "ISender.h"
-#include "ISubscriber.h"
+#include "IMessageSender.h"
+#include "IMessageSubscriber.h"
 
 #include <thread>
 #include <mutex>
