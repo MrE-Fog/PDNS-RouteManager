@@ -31,14 +31,14 @@ int main (int argc, char *argv[])
     //parse port
     if(std::strlen(argv[2])>5)
     {
-        return 1;
         logger.Error() << "port number is too long!" << std::endl;
+        return 1;
     }
     auto port=std::atoi(argv[2]);
     if(port<1||port>65535)
     {
-        return 1;
         logger.Error() << "port number is incorrect!" << std::endl;
+        return 1;
     }
 
     bool useByteSwap=false;
