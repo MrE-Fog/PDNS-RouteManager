@@ -13,7 +13,7 @@ class NetDevTracker final : public WorkerBase
         const char * const ifname;
         const timeval &timeout;
         ILogger &logger;
-        ISender &control;
+        ISender &sender;
         std::atomic<bool> shutdownRequested;
 
         void HandleError(int ec, const char* message);
@@ -21,7 +21,7 @@ class NetDevTracker final : public WorkerBase
         void Worker() final;
         void OnShutdown() final;
     public:
-        NetDevTracker(ILogger &logger, ISender &control, const timeval &timeout, const char * const ifname);
+        NetDevTracker(ILogger &logger, ISender &sender, const timeval &timeout, const char * const ifname);
 };
 
 #endif // NETDEVTRACKER_H

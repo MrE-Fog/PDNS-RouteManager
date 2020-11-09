@@ -20,7 +20,7 @@ NetDevTracker::NetDevTracker(ILogger &_logger, ISender &_sender, const timeval &
     ifname(_ifname),
     timeout(_timeout),
     logger(_logger),
-    control(_sender)
+    sender(_sender)
 {
     shutdownRequested.store(false);
 }
@@ -33,7 +33,7 @@ void NetDevTracker::OnShutdown()
 void NetDevTracker::HandleError(int ec, const char* message)
 {
     logger.Error()<<message<<strerror(ec)<<std::endl;
-    control.SendMessage(this,ShutdownMessage(ec));
+    sender.SendMessage(this,ShutdownMessage(ec));
 }
 
 void NetDevTracker::Worker()
