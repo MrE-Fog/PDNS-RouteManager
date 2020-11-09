@@ -196,7 +196,17 @@ void RoutingManager::_FinalizeRouteInsert(const IPAddress& dest)
     uint64_t expiration=curTime.load()+extraTTL;
     auto pIT=pendingInserts.find(dest);
     if(pIT==pendingInserts.end())
-        logger.Warning()<<"No pending route-rule insert found for: "<<dest<<std::endl; //route without pending-insert will me created with minimum ttl
+    {
+        //try active route
+        auto aIT=activeRoutes.find(dest);
+        if(aIT!=activeRoutes.end())
+        {
+            logger.Warning()<<"Ignoring modification of active route expiration time for: "<<dest<<std::endl;
+            return;
+        }
+        //route without pending-insert might be created with minimum ttl
+        logger.Warning()<<"No pending route-rule insert found for: "<<dest<<std::endl;
+    }
     else
     {
         expiration=pIT->second;
