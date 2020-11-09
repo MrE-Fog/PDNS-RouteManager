@@ -1,4 +1,6 @@
 #include "NetDevTracker.h"
+#include "IPAddress.h"
+
 #include <thread>
 #include <chrono>
 
@@ -88,38 +90,36 @@ void NetDevTracker::Worker()
         {
             if (nh->nlmsg_type == NLMSG_DONE) // The end of multipart message
                 break;
-            if (nh->nlmsg_type == NLMSG_ERROR)
+            else if (nh->nlmsg_type == NLMSG_ERROR)
             {
                 auto error=errno;
                 logger.Error()<<"Error received from netlink : "<<strerror(error)<<std::endl;
                 control.Shutdown(error);
             }
-            if (nh->nlmsg_type == RTM_NEWADDR)
+            else if (nh->nlmsg_type == RTM_NEWADDR || nh->nlmsg_type == RTM_DELADDR)
             {
                 auto *ifa = (ifaddrmsg*)NLMSG_DATA(nh);
-                char name[IFNAMSIZ];
-                if_indextoname(ifa->ifa_index, name);
-                //TODO: ignore interface that is not tracked
-                logger.Info()<<"New address on interface: "<<name<<std::endl;
+                char msg_ifname[IFNAMSIZ];
+                if_indextoname(ifa->ifa_index, msg_ifname);
+                if(std::strncmp(ifname,msg_ifname,IFNAMSIZ)!=0)
+                    continue; //interface name not matched
+
                 auto rtl = IFA_PAYLOAD(nh);
                 for (auto *rth = IFA_RTA(ifa); RTA_OK(rth, rtl); rth = RTA_NEXT(rth, rtl))
                 {
                     if (rth->rta_type == IFA_LOCAL)
                     {
-                        char ip[INET_ADDRSTRLEN];
-                        inet_ntop(AF_INET, RTA_DATA(rth), ip, sizeof(ip));
-                        logger.Info()<<"interface "<<name<<"; local ip "<<ip<<std::endl;
+                        IPAddress ip(rth);
+                        logger.Info()<<(nh->nlmsg_type==RTM_NEWADDR?"Added":"Removed")<<" local ip "<<ip<<std::endl;
                     }
                     if (rth->rta_type == IFA_ADDRESS)
                     {
-                        char ip[INET_ADDRSTRLEN];
-                        inet_ntop(AF_INET, RTA_DATA(rth), ip, sizeof(ip));
-                        logger.Info()<<"interface "<<name<<"; ip "<<ip<<std::endl;
+                        IPAddress ip(rth);
+                        logger.Info()<<(nh->nlmsg_type==RTM_NEWADDR?"Added":"Removed")<<" ip "<<ip<<std::endl;
                     }
                 }
-
             }
-            logger.Warning()<<"Unknown message received, TODO: decode"<<std::endl;
+            else logger.Warning()<<"Unknown message received, TODO: decode"<<std::endl;
         }
     }
 
