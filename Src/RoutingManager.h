@@ -26,8 +26,8 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         const uint extraTTL;
         const int mgIntervalSec;
         const int mgPercent;
-        const int metric;
-        const int ksMetric;
+        const int metric; //must be int, according to rtnetlink.7
+        const int ksMetric; //must be int, according to rtnetlink.7
         //varous locking stuff and cross-thread counters
         std::mutex opLock;
         std::atomic<bool> shutdownPending;

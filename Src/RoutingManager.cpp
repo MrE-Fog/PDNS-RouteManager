@@ -16,12 +16,12 @@
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
 //should be a POD type
-struct RouteRequest
+struct RouteMsg
 {
     public:
         nlmsghdr nl;
         rtmsg rt;
-        unsigned char data[4096];
+        unsigned char data[256];
 };
 
 RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress _gateway, const uint _extraTTL, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric):
@@ -136,9 +136,56 @@ uint32_t RoutingManager::_UpdateSeqNum()
     return seqNum;
 }
 
+#define NLMSG_TAIL(nmsg) ((struct rtattr *) (((unsigned char *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
+
+static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, size_t alen)
+{
+    unsigned short len = (short)(RTA_LENGTH(alen));
+    rtattr *rta;
+    if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > sizeof(RouteMsg))
+        exit(-10); //should not happen normally
+    rta = NLMSG_TAIL(n);
+    rta->rta_type=type;
+    rta->rta_len=(short)len;
+    if (alen>0)
+        memcpy(RTA_DATA(rta), data, alen);
+    n->nlmsg_len=NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(len);
+}
+
 void RoutingManager::_ProcessPendingInserts()
 {
-    //TODO
+    for (auto const &el : pendingInserts)
+    {
+        RouteMsg msg={};
+        msg.nl.nlmsg_len=NLMSG_LENGTH(sizeof(rtmsg));
+        msg.nl.nlmsg_seq=el.first;
+        msg.nl.nlmsg_flags=NLM_F_REQUEST|NLM_F_CREATE|NLM_F_REPLACE;
+        msg.nl.nlmsg_type=RTM_NEWROUTE;
+        msg.rt.rtm_table=RT_TABLE_MAIN;
+        msg.rt.rtm_scope=RT_SCOPE_UNIVERSE;
+        msg.rt.rtm_type=RTN_UNICAST;
+        msg.rt.rtm_protocol=RTPROT_STATIC;
+        msg.rt.rtm_dst_len=el.second.dest.isV6?128:32;
+        msg.rt.rtm_family=el.second.dest.isV6?AF_INET6:AF_INET;
+
+        //add destination
+        unsigned char addr[IP_ADDR_LEN]={};
+        el.second.dest.ToBinary(addr);
+        AddRTA(&msg.nl,RTA_DST,addr,el.second.dest.isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
+
+        //add interface
+        auto ifIdx=if_nametoindex(ifname);
+        AddRTA(&msg.nl,RTA_OIF,&ifIdx,sizeof(ifIdx));
+
+        //set metrics
+        AddRTA(&msg.nl,RTA_PRIORITY,&metric,sizeof(metric));
+
+        //add gateway
+
+        //send netlink message:
+        if(send(sock,&msg,sizeof(RouteMsg),0)!=sizeof(RouteMsg))
+            logger.Error()<<"Failed to send route via netlink: "<<strerror(errno)<<std::endl;
+    }
 }
 
 void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
