@@ -37,10 +37,10 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         int sock;
         ImmutableStorage<InterfaceConfig> ifCfg;
         //containters for storing routes at various states
-        std::unordered_map<IPAddress,uint64_t> pendingInserts; //non-confirmed and failed routes
-        std::unordered_map<IPAddress,int32_t> pendingRetries; //non-confirmed and failed routes
-        std::unordered_map<IPAddress,uint64_t> activeRoutes; //confirmed routes
-        std::multimap<uint64_t,IPAddress> pendingExpires; //non-confirmed and failed routes
+        std::unordered_map<IPAddress,uint64_t> pendingInserts; //pending (new and failed) routes
+        std::unordered_map<IPAddress,int32_t> pendingRetries; //tries counter for pending routes
+        std::unordered_map<IPAddress,uint64_t> activeRoutes; //confirmed active routes
+        std::multimap<uint64_t,IPAddress> pendingExpires; //routes sorted by expiration time, used by background management worker to decide what route to remove
         //service methods that will use opLock internally
         void ManageRoutes();
         void InsertRoute(const IPAddress &dest, uint ttl);

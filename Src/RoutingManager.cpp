@@ -356,7 +356,7 @@ void RoutingManager::ConfirmRouteDel(const IPAddress &dest)
         logger.Warning()<<"Pending re-add for unexpectedly removed route for: "<<dest<<std::endl;
         pendingInserts.insert({dest,aIT->second});
         pendingRetries.erase(dest);
-        activeRoutes.erase(dest);
+        activeRoutes.erase(aIT);
     }
 }
 
