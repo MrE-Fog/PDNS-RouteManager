@@ -275,9 +275,10 @@ void RoutingManager::_ProcessStaleRoutes()
         auto tIT=pendingExpires.begin();
         if(curTime.load()<tIT->first)
         {
-            logger.Info()<<"time diff: "<<tIT->first-curTime.load()<<std::endl;
+            logger.Info()<<"time diff for next mark: "<<tIT->first-curTime.load()<<std::endl;
             return;
         }
+        logger.Info()<<"Evaluating ip: "<<tIT->second<<" with expire mark: "<<tIT->first<<std::endl;
         //check time mark is valid
         auto aIT=activeRoutes.find(tIT->second);
         if(aIT==activeRoutes.end()||aIT->second>tIT->first)
@@ -285,7 +286,7 @@ void RoutingManager::_ProcessStaleRoutes()
         else
         {
             _ProcessRoute(aIT->first,false,false); //commence route removal
-            logger.Info()<<"Removing slate routing rule for: "<<aIT->first<<std::endl;
+            logger.Info()<<"Removing slate routing rule for: "<<aIT->first<<" with expite mark: "<<aIT->second<<std::endl;
             _ProcessRoute(aIT->first,true,false); //commence blackhole route removal
             activeRoutes.erase(aIT); //remove from active routes
         }
