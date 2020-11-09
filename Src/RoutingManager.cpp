@@ -15,20 +15,30 @@
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
-RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress _gateway, const uint _extraTtl, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric):
+//should be a POD type
+struct RouteRequest
+{
+    public:
+        nlmsghdr nl;
+        rtmsg rt;
+        unsigned char data[4096];
+};
+
+RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress _gateway, const uint _extraTTL, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric):
     logger(_logger),
     ifname(_ifname),
     gateway(_gateway),
-    extraTtl(_extraTtl),
+    extraTTL(_extraTTL),
     mgIntervalSec(_mgIntervalSec),
     mgPercent(_mgPercent),
     metric(_metric),
-    ksMetric(_ksMetric)
+    ksMetric(_ksMetric),
+    ifCfg(ImmutableStorage<InterfaceConfig>(InterfaceConfig()))
 {
-    UpdateCurTime();
+    _UpdateCurTime();
     shutdownPending.store(false);
     sock=-1;
-    seqNum=0;
+    seqNum=10;
 }
 
 //overrodes for performing some extra-init
@@ -80,9 +90,8 @@ void RoutingManager::OnShutdown()
     shutdownPending.store(true);
 }
 
-uint64_t RoutingManager::UpdateCurTime()
+uint64_t RoutingManager::_UpdateCurTime()
 {
-    const std::lock_guard<std::mutex> lock(opLock);
     timespec time={};
     clock_gettime(CLOCK_MONOTONIC,&time);
     curTime.store((uint64_t)(unsigned)time.tv_sec);
@@ -96,7 +105,7 @@ void RoutingManager::Worker()
     while (!shutdownPending.load())
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        auto now=UpdateCurTime();
+        auto now=_UpdateCurTime();
         if(now-prev>=(unsigned)mgIntervalSec)
         {
             prev=now;
@@ -106,11 +115,53 @@ void RoutingManager::Worker()
     logger.Info()<<"Shuting down RoutingManager worker"<<std::endl;
 }
 
+void RoutingManager::ProcessNetDevUpdate(const InterfaceConfig& newConfig)
+{
+    const std::lock_guard<std::mutex> lock(opLock);
+    ifCfg.Set(newConfig); //update config
+    _ProcessPendingInserts(); //trigger pending routes processing
+}
+
 void RoutingManager::CleanStaleRoutes()
 {
     const std::lock_guard<std::mutex> lock(opLock);
     //TODO: clean stale routes, up to max percent
 }
+
+uint32_t RoutingManager::_UpdateSeqNum()
+{
+    seqNum++;
+    if(seqNum<10)
+        seqNum=10;
+    return seqNum;
+}
+
+void RoutingManager::_ProcessPendingInserts()
+{
+    //TODO
+}
+
+void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
+{
+    const std::lock_guard<std::mutex> lock(opLock);
+
+    //TODO: check, maybe we already have this route as pending
+    //if so - update pending route expiration time, generate new sequence number and process pending route insertion
+    //and return
+
+    //TODO: check, maybe we already have this route as active
+    //if so - update expiration time
+    //and return
+
+    //add new pending route
+    auto newRoute=Route(dest,curTime.load()+ttl+extraTTL);
+    auto newSeq=_UpdateSeqNum();
+    pendingInserts.insert({newSeq,newRoute});
+
+    //trigger pending routes processing
+    _ProcessPendingInserts();
+}
+
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
 {
@@ -122,11 +173,14 @@ void RoutingManager::OnMessage(const IMessage& message)
 {
     if(message.msgType==MSG_NETDEV_UPDATE)
     {
-        //if network changed to UP state - reinstall all currently initiated rules
-        //suspend any real route-update operations if network changed to DOWN state, but continue to track incoming routes
+        ProcessNetDevUpdate(static_cast<const INetDevUpdateMessage&>(message).config);
+        return;
     }
-    else if(message.msgType==MSG_ROUTE_REQUEST)
+
+    if(message.msgType==MSG_ROUTE_REQUEST)
     {
-        //track new route and push it to ther kernel if network state is up and running
+        auto reqMsg=static_cast<const IRouteRequestMessage&>(message);
+        InsertRoute(reqMsg.ip,reqMsg.ttl);
+        return;
     }
 }

@@ -3,6 +3,8 @@
 
 #include "ILogger.h"
 #include "IPAddress.h"
+#include "InterfaceConfig.h"
+#include "ImmutableStorage.h"
 #include "Route.h"
 #include "IMessageSubscriber.h"
 #include "WorkerBase.h"
@@ -11,6 +13,8 @@
 #include <atomic>
 #include <ctime>
 #include <unordered_map>
+#include <set>
+#include <unordered_set>
 
 class RoutingManager : public IMessageSubscriber, public WorkerBase
 {
@@ -19,7 +23,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         ILogger &logger;
         const char * const ifname;
         const IPAddress gateway;
-        const uint extraTtl;
+        const uint extraTTL;
         const int mgIntervalSec;
         const int mgPercent;
         const int metric;
@@ -31,13 +35,20 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         //all other fields must be accesed only using opLock mutex
         int sock;
         uint32_t seqNum;
-        std::unordered_map<uint32_t,Route> pendingRoutes; //non-confirmed and failed routes, must be reseeded as fast as possible, KEY is seqNum
+        std::unordered_map<uint32_t,Route> pendingInserts; //non-confirmed and failed routes, must be reseeded as fast as possible, KEY is seqNum
         std::set<Route> activeRoutes; //currently active routes, sorted by expiration times
-        //internal service methods
+        std::unordered_set<IPAddress> pendingRemoves; //routes pending to remove, identified by IP
+        ImmutableStorage<InterfaceConfig> ifCfg;
+        //service methods that will use opLock internally
         void CleanStaleRoutes();
-        uint64_t UpdateCurTime();
+        void InsertRoute(const IPAddress &dest, uint ttl);
+        void ProcessNetDevUpdate(const InterfaceConfig &newConfig);
+        //internal service methods that is not using opLock.
+        uint64_t _UpdateCurTime();
+        uint32_t _UpdateSeqNum();
+        void _ProcessPendingInserts();
     public:
-        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTtl, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric);
+        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric);
         //WorkerBase
         void Worker() final;
         void OnShutdown() final;
