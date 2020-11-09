@@ -11,15 +11,20 @@
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
-DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeval &_timeout, const IPAddress _listenAddr, const int _port, const bool useByteSwap):
+DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeval &_timeout, const IPAddress _listenAddr, const int _port, const bool _useByteSwap):
     logger(_logger),
     sender(_sender),
     timeout(_timeout),
     listenAddr(_listenAddr),
     port(_port),
-    pbHelper(ProtobufHelper(_logger,useByteSwap))
+    useByteSwap(_useByteSwap)
 {
     shutdownPending.store(false);
+}
+
+uint16_t DNSReceiver::DecodeHeader(const void * const data) const
+{
+    return useByteSwap?(uint16_t)((*((const uint16_t*)data)&0x00FF)<<8|(*((const uint16_t*)data)&0xFF00)>>8):*((const uint16_t*)data);
 }
 
 void DNSReceiver::HandleError(const char * const message)
@@ -136,15 +141,15 @@ void DNSReceiver::Worker()
             bool connAccepted=false;
             while (!connAccepted && !shutdownPending.load())
             {
-                //wait for new data ready to be read from netlink
-                fd_set set;
-                FD_ZERO(&set);
-                FD_SET(lSockFd, &set);
-                auto t = timeout;
-                auto rv = select(lSockFd+1, &set, NULL, NULL, &t);
-                if(rv==0) //no incoming connection detected
+                //wait for new connection
+                fd_set lSet;
+                FD_ZERO(&lSet);
+                FD_SET(lSockFd, &lSet);
+                auto lt = timeout;
+                auto lrv = select(lSockFd+1, &lSet, NULL, NULL, &lt);
+                if(lrv==0) //no incoming connection detected
                     continue;
-                if(rv<0)
+                if(lrv<0)
                 {
                     auto error=errno;
                     if(error==EINTR)//interrupted by signal
@@ -169,12 +174,62 @@ void DNSReceiver::Worker()
 
                 logger.Info()<<"Client connected"<<std::endl;
                 //receive dnsdist packages until receive socket is receiving
-                bool recvComplete=false;
-                while(!recvComplete && !shutdownPending.load())
+                bool headerPending=true;
+                size_t dataLeft=2;
+                size_t dataSize=2;
+                unsigned char* data[65536]={}; //uint16_t header may only encode 64kib of data
+                while(!shutdownPending.load())
                 {
-                    //check for shutdown is pending
-                    //if no new data can be read, then recvComplete=true
-                    recvComplete=true;
+                    //wait for data
+                    fd_set cSet;
+                    FD_ZERO(&cSet);
+                    FD_SET(cSockFd, &cSet);
+                    auto ct = timeout;
+                    auto crv = select(cSockFd+1, &cSet, NULL, NULL, &ct);
+                    if(crv==0) //no incoming connection detected
+                        continue;
+                    if(crv<0)
+                    {
+                        auto error=errno;
+                        if(error==EINTR)//interrupted by signal
+                            break;
+                        HandleError(error,"Error awaiting data from client: ");
+                        return;
+                    }
+                    //read data
+                    auto dataRead=read(cSockFd,(void*)(data+dataSize-dataLeft),dataLeft);
+                    if(dataRead==0)
+                    {
+                        logger.Info()<<"Client disconnected"<<std::endl;
+                        break; //connection closed
+                    }
+                    if(dataRead<0)
+                    {
+                        logger.Warning()<<"Error reading data from client: "<<strerror(errno)<<std::endl;
+                        break;
+                    }
+                    dataLeft-=dataRead;
+                    if(dataLeft>0) //we still need to read more data
+                        continue;
+                    if(headerPending)
+                    {//decore header, setup read of data-payload
+                        dataSize=DecodeHeader(data);
+                        if(dataSize<1)
+                            dataSize=2; //zero sized payload, setup read for another header
+                        else
+                            headerPending=false;
+                        dataLeft=dataSize;
+                    }
+                    else
+                    {//decode payload, setup read of next data-header
+                        //TODO: decode payload
+                        //TODO: send new ip addressess and other service info for processing
+
+                        logger.Info()<<"Payload received: "<<dataSize<<std::endl;
+                        //setup reading of new package
+                        headerPending=true;
+                        dataSize=dataLeft=2;
+                    }
                 }
 
                 logger.Info()<<"Closing client connection"<<std::endl;

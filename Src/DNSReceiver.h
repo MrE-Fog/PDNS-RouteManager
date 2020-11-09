@@ -5,7 +5,6 @@
 #include "IPAddress.h"
 #include "WorkerBase.h"
 #include "IMessageSender.h"
-#include "ProtobufHelper.h"
 
 #include <atomic>
 
@@ -17,15 +16,15 @@ class DNSReceiver : public WorkerBase
         const timeval &timeout;
         const IPAddress listenAddr;
         const int port;
-        const ProtobufHelper pbHelper;
+        const bool useByteSwap;
         std::atomic<bool> shutdownPending;
 
         void HandleError(int ec, const char* const message);
         void HandleError(const char* const message);
+        uint16_t DecodeHeader(const void * const data) const;
     public:
         DNSReceiver(ILogger &logger, IMessageSender &sender, const timeval &timeout, const IPAddress listenAddr, const int port, const bool useByteSwap);
-    //WorkerBase
-    protected:
+    protected: //WorkerBase
         void Worker() final;
         void OnShutdown() final;
 };
