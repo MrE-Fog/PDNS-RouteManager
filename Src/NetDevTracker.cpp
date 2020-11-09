@@ -26,7 +26,6 @@ NetDevTracker::NetDevTracker(ILogger &_logger, IControl &_control, const timeval
 
 void NetDevTracker::RequestShutdown()
 {
-    logger.Info()<<"Requesting shutdown for NetDevTracker worker thread"<<std::endl;
     shutdownRequested.store(true);
 }
 
@@ -74,6 +73,8 @@ void NetDevTracker::Worker()
         if(rv<0)
         {
             auto error=errno;
+            if(error==EINTR)//interrupted by signal
+                break;
             logger.Error()<<"Error awaiting message from netlink : "<<strerror(error)<<std::endl;
             control.Shutdown(error);
         }
@@ -84,7 +85,18 @@ void NetDevTracker::Worker()
         sockaddr_nl sa = {};
         msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
 
+        //read message from netlink
         auto len = recvmsg(sock, &msg, 0);
+        if(len<0)
+        {
+            auto error=errno;
+            if(error==EINTR)//interrupted by signal
+                break;
+            logger.Error()<<"Error reading message from netlink : "<<strerror(error)<<std::endl;
+            control.Shutdown(error);
+        }
+
+        //process message
         for (auto *nh = (nlmsghdr*)buf; NLMSG_OK (nh, len) && nh->nlmsg_type != NLMSG_DONE; nh = NLMSG_NEXT (nh, len))
         {
             if (nh->nlmsg_type == NLMSG_ERROR)

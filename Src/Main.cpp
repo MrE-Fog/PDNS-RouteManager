@@ -8,6 +8,7 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
+#include <csignal>
 
 //TODO: improve this
 class ShutdownControl final: public IControl
@@ -23,6 +24,13 @@ class ShutdownControl final: public IControl
         }
 };
 
+static std::atomic<bool> shutdownSignalReceived(false);
+
+void signalhandler(int)
+{
+    shutdownSignalReceived.store(true);
+}
+
 int usage(ILogger &logger, const char * const self)
 {
     logger.Error() << "Usage: " << self << " <listen ip-addr> <port> <target netdev>" << std::endl;
@@ -31,7 +39,7 @@ int usage(ILogger &logger, const char * const self)
 
 int main (int argc, char *argv[])
 {
-    const int timeoutMs=1000; //TODO: read timeouts from config
+    const int timeoutMs=500; //TODO: read timeouts from config
     const timeval timeoutTv = { timeoutMs/1000, (timeoutMs-timeoutMs/1000*1000)*1000 };
 
     StdioLogger logger;
@@ -46,18 +54,18 @@ int main (int argc, char *argv[])
     //init
     tracker.Startup();
 
-    //TODO: wait for termination signal(s), or call for shutdown
-    int rounds=40; //for tests, remove
+    std::signal(SIGINT, signalhandler);
+    std::signal(SIGHUP, signalhandler);
+    std::signal(SIGTERM, signalhandler);
+
     while(true)
     {
-        if(rounds<1)
+        if(shutdownSignalReceived.load())
             break;
-        //TODO: use some sync-primitive instead of waiting;
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        rounds--;
         if(control.shutdownRequested.load())
         {
-            if(control.ec!=0)
+            if(control.ec.load()!=0)
                 logger.Error() << "One of background worker was failed, shuting down" << std::endl;
             else
                 logger.Info() << "Shuting down gracefully by signal from background worker" << std::endl;
