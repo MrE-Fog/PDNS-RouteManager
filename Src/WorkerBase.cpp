@@ -20,3 +20,12 @@ bool WorkerBase::Shutdown()
     worker=nullptr;
     return true;
 }
+
+bool WorkerBase::RequestShutdown()
+{
+    const std::lock_guard<std::mutex> lock(workerLock);
+    if(worker==nullptr)
+        return false;
+    OnShutdown();
+    return true;
+}

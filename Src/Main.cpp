@@ -16,7 +16,7 @@
 
 int main (int argc, char *argv[])
 {
-    const int timeoutMs=300; //TODO: read timeouts from config
+    const int timeoutMs=250; //TODO: read timeouts from config
     const timeval timeoutTv = { timeoutMs/1000, (timeoutMs-timeoutMs/1000*1000)*1000 };
 
     StdioLogger logger;
@@ -59,6 +59,7 @@ int main (int argc, char *argv[])
 
     while(true)
     {
+        //TODO: use sigwait/sigtimedwait and self-signalling (optional) instead of sleep+poll for shutdown
         std::this_thread::sleep_for(std::chrono::seconds(1));
         if(shutdownHandler.IsShutdownRequested())
         {
@@ -72,7 +73,11 @@ int main (int argc, char *argv[])
             break;
     }
 
-    //shutdown background workers
+    //request shutdown of background workers
+    dnsReceiver.RequestShutdown();
+    tracker.RequestShutdown();
+
+    //wait for background workers shutdown complete
     dnsReceiver.Shutdown();
     tracker.Shutdown();
 
