@@ -156,21 +156,21 @@ static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, si
 void RoutingManager::_ProcessPendingInserts()
 {
     for (auto const &el : pendingInserts)
-        _PushRoute(el.first,el.second);
+        _PushRoute(el.second);
 }
 
-void RoutingManager::_PushRoute(const int seq, const Route &route)
+void RoutingManager::_PushRoute(const Route &route)
 {
     RouteMsg msg={};
 
     msg.nl.nlmsg_len=NLMSG_LENGTH(sizeof(rtmsg));
-    msg.nl.nlmsg_seq=seq;
     msg.nl.nlmsg_flags=NLM_F_REQUEST|NLM_F_CREATE|NLM_F_REPLACE;
     msg.nl.nlmsg_type=RTM_NEWROUTE;
 
     msg.rt.rtm_table=RT_TABLE_MAIN;
     msg.rt.rtm_scope=RT_SCOPE_UNIVERSE;
     msg.rt.rtm_type=RTN_UNICAST;
+    //msg.rt.rtm_flags=RTM_F_NOTIFY;
     msg.rt.rtm_protocol=RTPROT_STATIC; //TODO: check do we really need this
     msg.rt.rtm_dst_len=route.dest.isV6?128:32;
     msg.rt.rtm_family=route.dest.isV6?AF_INET6:AF_INET;
@@ -227,7 +227,7 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
     pendingInserts.insert({newSeq,newRoute});
 
     //process new route
-    _PushRoute(newSeq,newRoute);
+    _PushRoute(newRoute);
 }
 
 
