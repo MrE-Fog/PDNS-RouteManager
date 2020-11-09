@@ -18,6 +18,8 @@
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 class NetDevUpdateMessage: public INetDevUpdateMessage { public: NetDevUpdateMessage(InterfaceConfig _config):INetDevUpdateMessage(_config){} };
+class RouteAddedMessage: public IRouteAddedMessage { public: RouteAddedMessage(const IPAddress &_ip):IRouteAddedMessage(_ip){} };
+class RouteRemovedMessage: public IRouteRemovedMessage { public: RouteRemovedMessage(const IPAddress &_ip):IRouteRemovedMessage(_ip){} };
 
 NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const int _metric, const char* const _ifname):
     ifname(_ifname),
@@ -228,8 +230,11 @@ void NetDevTracker::Worker()
                     logger.Warning()<<"No valid destination address received for route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<" notification"<<std::endl;
                     continue;
                 }
-                logger.Info()<<"Route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<"; ip="<<dest.Get()<<std::endl;
-                //TODO: send route update message
+                //logger.Info()<<"Route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<"; ip="<<dest.Get()<<std::endl;
+                if(nh->nlmsg_type==RTM_NEWROUTE)
+                    sender.SendMessage(this,RouteAddedMessage(dest.Get()));
+                else
+                    sender.SendMessage(this,RouteRemovedMessage(dest.Get()));
             }
             else logger.Warning()<<"Unknown message received: "<<nh->nlmsg_type<<std::endl; //TODO: decode other messages
         }
