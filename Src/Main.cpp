@@ -1,5 +1,6 @@
 #include "ILogger.h"
 #include "StdioLogger.h"
+#include "RoutingManager.h"
 #include "NetDevTracker.h"
 #include "DNSReceiver.h"
 #include "MessageBroker.h"
@@ -84,6 +85,8 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
+    RoutingManager routingMgr(logger,argv[3],gateway,extraTTL,mgIntervalSec,mgPercent);
+    messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(logger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
     NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
 
@@ -97,6 +100,7 @@ int main (int argc, char *argv[])
     }
 
     //start background workers, or perform post-setup init
+    routingMgr.Startup();
     dnsReceiver.Startup();
     tracker.Startup();
 
@@ -128,10 +132,12 @@ int main (int argc, char *argv[])
     //request shutdown of background workers
     dnsReceiver.RequestShutdown();
     tracker.RequestShutdown();
+    routingMgr.RequestShutdown();
 
     //wait for background workers shutdown complete
     dnsReceiver.Shutdown();
     tracker.Shutdown();
+    routingMgr.RequestShutdown();
 
     return  0;
 }

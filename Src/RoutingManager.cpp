@@ -32,7 +32,7 @@ RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, cons
 bool RoutingManager::Startup()
 {
     //open netlink socket
-    logger.Info()<<"Preparing RoutingManager"<<ifname<<std::endl;
+    logger.Info()<<"Preparing RoutingManager for interface: "<<ifname<<std::endl;
 
     sock=socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if(sock==-1)
