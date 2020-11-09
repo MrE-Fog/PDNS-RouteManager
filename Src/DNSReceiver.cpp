@@ -1,8 +1,11 @@
 #include "DNSReceiver.h"
+#include "dnsmessage.pb.h"
+
 #include <thread>
 #include <chrono>
 #include <cstring>
 #include <cerrno>
+#include <string>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -222,10 +225,36 @@ void DNSReceiver::Worker()
                     }
                     else
                     {//decode payload, setup read of next data-header
-                        //TODO: decode payload
-                        //TODO: send new ip addressess and other service info for processing
+                        //decode payload
+                        PBDNSMessage message;
+                        if(!message.ParseFromArray(data,(int)dataSize))
+                            logger.Warning()<<"Failed to decode payload of size "<<dataSize<<std::endl;
+                        else if(!message.has_response() || message.response().rrs_size()<1)
+                            logger.Warning()<<"No valid response or dns resource records provided in dnsdist message"<<std::endl;
+                        else
+                            //parse dns resource records
+                            for(auto rIdx=0;rIdx<message.response().rrs_size();++rIdx)
+                            {
+                                auto record=message.response().rrs(rIdx);
+                                std::string name=record.has_name()?record.name():"<NO NAME>";
+                                auto type=record.has_type()?record.type():0;
+                                auto ttl=record.has_ttl()?record.ttl():0;
+                                auto rdata=record.has_rdata()?record.rdata():std::string();
+                                if(rdata.empty()||(type!=1&&type!=28))
+                                    logger.Warning()<<"Unsupported dns resource record provided -> name="<<name<<",type="<<type<<",ttl="<<ttl<<",rdata len="<<rdata.length()<<std::endl;
+                                else
+                                {
+                                    IPAddress ip(rdata);
+                                    if(!ip.isValid)
+                                        logger.Warning()<<"Invalid ip address decoded for response -> name="<<name<<",type="<<type<<",ttl="<<ttl<<",rdata len="<<rdata.length()<<std::endl;
+                                    else
+                                    {
+                                        logger.Info()<<"Valid response decoded -> name="<<name<<",ip="<<ip<<",type="<<type<<",ttl="<<ttl<<std::endl;
+                                        //TODO: send provided info to the routing service
+                                    }
+                                }
+                            }
 
-                        logger.Info()<<"Payload received: "<<dataSize<<std::endl;
                         //setup reading of new package
                         headerPending=true;
                         dataSize=dataLeft=2;
