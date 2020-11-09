@@ -201,7 +201,7 @@ void RoutingManager::_FinalizeRouteInsert(const IPAddress& dest)
     else
     {
         expiration=pIT->second;
-        pendingInserts.erase(dest);
+        pendingInserts.erase(pIT);
         pendingRetries.erase(dest);
     }
     activeRoutes[dest]=expiration; //move rule to activeRoutes
