@@ -7,8 +7,10 @@ class ProtobufHelper
 {
     private:
         ILogger &logger;
+        const bool useByteSwap;
+        uint16_t SwapU16(uint16_t &src) const;
     public:
-        ProtobufHelper(ILogger &logger);
+        ProtobufHelper(ILogger &logger, bool useByteSwap);
         void Test(const char * const filename);
 };
 

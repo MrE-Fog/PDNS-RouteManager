@@ -23,8 +23,8 @@ int main (int argc, char *argv[])
     }
 
     //test protobuf
-    ProtobufHelper pbHelper(logger);
-    pbHelper.Test("../../dnsdist.pb.example");
+    ProtobufHelper pbHelper(logger,true);
+    pbHelper.Test("../../test1.pb");
 
     //configure essential stuff
     MessageBroker messageBroker;
