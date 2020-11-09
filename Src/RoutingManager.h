@@ -3,12 +3,14 @@
 
 #include "ILogger.h"
 #include "IPAddress.h"
+#include "Route.h"
 #include "IMessageSubscriber.h"
 #include "WorkerBase.h"
 
 #include <mutex>
 #include <atomic>
 #include <ctime>
+#include <unordered_map>
 
 class RoutingManager : public IMessageSubscriber, public WorkerBase
 {
@@ -29,9 +31,8 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         //all other fields must be accesed only using opLock mutex
         int sock;
         uint32_t seqNum;
-        //unsorted set with non-confirmed and failed routes, must be reseeded as fast as possible
-        //sorted set with active routes sorted by EOL time in accending order
-
+        std::unordered_map<uint32_t,Route> pendingRoutes; //non-confirmed and failed routes, must be reseeded as fast as possible, KEY is seqNum
+        std::set<Route> activeRoutes; //currently active routes, sorted by expiration times
         //internal service methods
         void CleanStaleRoutes();
         uint64_t UpdateCurTime();
