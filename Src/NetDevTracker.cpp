@@ -15,18 +15,26 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
-NetDevTracker::NetDevTracker(ILogger &_logger, IControl &_control, const timeval &_timeout, const char* const _ifname):
-    WorkerBase(_control),
+class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
+
+NetDevTracker::NetDevTracker(ILogger &_logger, ISender &_sender, const timeval &_timeout, const char* const _ifname):
     ifname(_ifname),
     timeout(_timeout),
-    logger(_logger)
+    logger(_logger),
+    control(_sender)
 {
     shutdownRequested.store(false);
 }
 
-void NetDevTracker::RequestShutdown()
+void NetDevTracker::OnShutdown()
 {
     shutdownRequested.store(true);
+}
+
+void NetDevTracker::HandleError(int ec, const char* message)
+{
+    logger.Error()<<message<<strerror(ec)<<std::endl;
+    control.SendMessage(this,ShutdownMessage(ec));
 }
 
 void NetDevTracker::Worker()
@@ -36,19 +44,18 @@ void NetDevTracker::Worker()
     auto sock=socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if(sock==-1)
     {
-        auto error=errno;
-        logger.Error()<<"Failed to open netlink socket: "<<strerror(error)<<std::endl;
-        control.Shutdown(error);
+        HandleError(errno,"Failed to open netlink socket: ");
+        return;
     }
 
     sockaddr_nl nlAddr = {};
     nlAddr.nl_family=AF_NETLINK;
     nlAddr.nl_groups=RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
 
-    if (bind(sock, (sockaddr *)&nlAddr, sizeof(nlAddr)) == -1) {
-        auto error=errno;
-        logger.Error()<<"Failed to bind to netlink socket: "<<strerror(error)<<std::endl;
-        control.Shutdown(error);
+    if (bind(sock, (sockaddr *)&nlAddr, sizeof(nlAddr)) == -1)
+    {
+        HandleError(errno,"Failed to bind to netlink socket: ");
+        return;
     }
 
     //TODO: get initial information about interfaces using getifaddrs
@@ -75,8 +82,8 @@ void NetDevTracker::Worker()
             auto error=errno;
             if(error==EINTR)//interrupted by signal
                 break;
-            logger.Error()<<"Error awaiting message from netlink : "<<strerror(error)<<std::endl;
-            control.Shutdown(error);
+            HandleError(error,"Error awaiting message from netlink: ");
+            return;
         }
 
         //from man netlink.7
@@ -92,8 +99,8 @@ void NetDevTracker::Worker()
             auto error=errno;
             if(error==EINTR)//interrupted by signal
                 break;
-            logger.Error()<<"Error reading message from netlink : "<<strerror(error)<<std::endl;
-            control.Shutdown(error);
+            HandleError(error,"Error reading message from netlink: ");
+            return;
         }
 
         //process message
@@ -101,9 +108,8 @@ void NetDevTracker::Worker()
         {
             if (nh->nlmsg_type == NLMSG_ERROR)
             {
-                auto error=errno;
-                logger.Error()<<"Error received from netlink : "<<strerror(error)<<std::endl;
-                control.Shutdown(error);
+                HandleError(errno,"Error received from netlink: ");
+                return;
             }
             else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK)
             {
@@ -153,8 +159,7 @@ void NetDevTracker::Worker()
 
     if(close(sock)!=0)
     {
-        auto error=errno;
-        logger.Error()<<"Failed to close netlink socket: "<<strerror(error)<<std::endl;
-        control.Shutdown(error);
+        HandleError(errno,"Failed to close netlink socket: ");
+        return;
     }
 }

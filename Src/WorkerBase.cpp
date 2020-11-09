@@ -1,8 +1,5 @@
 #include "WorkerBase.h"
 
-WorkerBase::WorkerBase(IControl &_control):
-    control(_control) { }
-
 bool WorkerBase::Startup()
 {
     const std::lock_guard<std::mutex> lock(workerLock);
@@ -17,7 +14,7 @@ bool WorkerBase::Shutdown()
     const std::lock_guard<std::mutex> lock(workerLock);
     if(worker==nullptr)
         return false;
-    RequestShutdown();
+    OnShutdown();
     worker->join();
     delete worker;
     worker=nullptr;
