@@ -7,12 +7,12 @@
 #include <cerrno>
 
 #include <unistd.h>
-//#include <netinet/in.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
@@ -57,7 +57,36 @@ void NetDevTracker::Worker()
         return;
     }
 
-    //TODO: get initial information about interfaces using getifaddrs
+    //get initial information about interfaces using getifaddrs
+    {
+        //TODO: store ip addresses
+
+        ifaddrs *ifaddr=nullptr;
+        if(getifaddrs(&ifaddr)!=0)
+        {
+            HandleError(errno,"Failed while executing getifaddrs: ");
+            return;
+        }
+
+        for(auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+        {
+            if(ifa->ifa_addr == NULL)
+                continue;
+            if(ifa->ifa_addr->sa_family!=AF_INET && ifa->ifa_addr->sa_family!=AF_INET6)
+                continue; //unsupported interface family
+            if(std::strncmp(ifname,ifa->ifa_name,IFNAMSIZ)!=0)
+                continue; //interface name not matched
+
+            //TODO: store ip addresses
+            bool isPTP=(ifa->ifa_flags&IFF_POINTOPOINT)!=0;
+            bool isBRC=(ifa->ifa_flags&IFF_BROADCAST)!=0;
+            IPAddress firstIp(ifa->ifa_addr);
+            IPAddress secondIp=isPTP?IPAddress(ifa->ifa_dstaddr):(isBRC&&!firstIp.isV6)?IPAddress(ifa->ifa_broadaddr):IPAddress();
+            logger.Info()<<"isPTP="<<isPTP<<"; isBRC="<<isBRC<<"; first ip:"<<firstIp<<"; second ip:"<<secondIp<<std::endl;
+        }
+
+        freeifaddrs(ifaddr);
+    }
 
     while(true)
     {
