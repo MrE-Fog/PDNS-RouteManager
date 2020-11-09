@@ -8,6 +8,8 @@ enum MsgType
     MSG_SHUTDOWN,
     MSG_NETDEV_UPDATE,
     MSG_ROUTE_REQUEST,
+    MSG_ROUTE_ADDED,
+    MSG_ROUTE_REMOVED,
 };
 
 class IMessage
@@ -41,6 +43,22 @@ class IRouteRequestMessage : public IMessage
     public:
         const IPAddress &ip;
         const uint ttl;
+};
+
+class IRouteAddedMessage : public IMessage
+{
+    protected:
+        IRouteAddedMessage(const IPAddress &_ip):IMessage(MSG_ROUTE_ADDED),ip(_ip){}
+    public:
+        const IPAddress &ip;
+};
+
+class IRouteRemovedMessage : public IMessage
+{
+    protected:
+        IRouteRemovedMessage(const IPAddress &_ip):IMessage(MSG_ROUTE_REMOVED),ip(_ip){}
+    public:
+        const IPAddress &ip;
 };
 
 #endif // IMESSAGE_H
