@@ -26,6 +26,7 @@ RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, cons
     UpdateCurTime();
     shutdownPending.store(false);
     sock=-1;
+    seqNum=0;
 }
 
 //overrodes for performing some extra-init

@@ -13,18 +13,24 @@
 class RoutingManager : public IMessageSubscriber, public WorkerBase
 {
     private:
+        //constants and thread-safe stuff
         ILogger &logger;
         const char * const ifname;
         const IPAddress gateway;
         const uint extraTtl;
         const int mgIntervalSec;
         const int mgPercent;
-
+        //varous locking stuff and cross-thread counters
         std::mutex opLock;
         std::atomic<bool> shutdownPending;
         std::atomic<uint64_t> curTime;
+        //all other fields must be accesed only using opLock mutex
         int sock;
+        uint32_t seqNum;
+        //unsorted set with non-confirmed and failed routes, must be reseeded as fast as possible
+        //sorted set with active routes sorted by EOL time in accending order
 
+        //internal service methods
         void CleanStaleRoutes();
         uint64_t UpdateCurTime();
     public:
