@@ -31,23 +31,30 @@ int usage(ILogger &logger, const char * const self)
 
 int main (int argc, char *argv[])
 {
+    const int timeoutMs=1000; //TODO: read timeouts from config
+    const timeval timeoutTv = { timeoutMs/1000, (timeoutMs-timeoutMs/1000*1000)*1000 };
+
     StdioLogger logger;
     ShutdownControl control;
 
-    if(argc!=3)
+    if(argc!=4)
         return usage(logger,argv[0]);
 
     //create main worker-instances
-    NetDevTracker tracker(logger,control);
+    NetDevTracker tracker(logger,control,timeoutTv);
 
     //init
     tracker.Startup();
 
     //TODO: wait for termination signal(s), or call for shutdown
+    int rounds=20; //for tests, remove
     while(true)
     {
+        if(rounds<1)
+            break;
         //TODO: use some sync-primitive instead of waiting;
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        rounds--;
         if(control.shutdownRequested.load())
         {
             if(control.ec!=0)

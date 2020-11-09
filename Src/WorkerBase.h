@@ -11,7 +11,7 @@ class WorkerBase
         std::mutex workerLock;
         std::thread* worker = nullptr;
     protected:
-        IControl& Control;
+        IControl& control;
         WorkerBase(IControl &control);
         virtual void Worker() = 0; // main worker's logic will run in a separate thread started by Startup method
         virtual void RequestShutdown() = 0; // must be threadsafe and notify Worker to stop, will be called inside Shutdown that itself may be called from any thread

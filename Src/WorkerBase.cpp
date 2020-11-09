@@ -1,7 +1,7 @@
 #include "WorkerBase.h"
 
-WorkerBase::WorkerBase(IControl& control):
-    Control(control) { }
+WorkerBase::WorkerBase(IControl &_control):
+    control(_control) { }
 
 bool WorkerBase::Startup()
 {
