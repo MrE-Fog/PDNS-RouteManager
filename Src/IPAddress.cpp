@@ -72,6 +72,22 @@ IPAddress::IPAddress(const char* const string):
 {
 }
 
+void IPAddress::ToSA(void* const targetSA) const
+{
+    if(!isValid)
+        return;
+    if(isV6)
+    {
+        auto target=(sockaddr_in6*)targetSA;
+        std::memcpy((void*)&(target->sin6_addr),(const void*)ip.data,IPV6_ADDR_LEN);
+    }
+    else
+    {
+        auto target=(sockaddr_in*)targetSA;
+        std::memcpy((void*)&(target->sin_addr),(const void*)ip.data,IPV4_ADDR_LEN);
+    }
+}
+
 bool IPAddress::Equals(const IPAddress& other) const
 {
     return isValid==other.isValid && isV6==other.isV6 && std::memcmp(ip.data,other.ip.data,IP_ADDR_LEN)==0;

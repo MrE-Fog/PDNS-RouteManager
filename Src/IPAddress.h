@@ -6,6 +6,7 @@
 
 #include <linux/rtnetlink.h>
 
+//TODO: re-use defines from include files
 #define IPV4_ADDR_LEN 4
 #define IPV6_ADDR_LEN 16
 #define IP_ADDR_LEN IPV6_ADDR_LEN
@@ -19,6 +20,8 @@ class IPAddress
         IPAddress(const rtattr * const rta);
         IPAddress(const std::string &rdata);
         IPAddress(const char * const string);
+
+        void ToSA(void * const targetSA) const;
 
         bool Equals(const IPAddress &other) const;
         bool Less(const IPAddress &other) const;
