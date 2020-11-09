@@ -8,6 +8,7 @@
 
 #include <mutex>
 #include <atomic>
+#include <ctime>
 
 class RoutingManager : public IMessageSubscriber, public WorkerBase
 {
@@ -21,7 +22,11 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
 
         std::mutex opLock;
         std::atomic<bool> shutdownPending;
+        std::atomic<uint64_t> curTime;
         int sock;
+
+        void CleanStaleRoutes();
+        uint64_t UpdateCurTime();
     public:
         RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTtl, const int mgIntervalSec, const int mgPercent);
         //WorkerBase

@@ -15,7 +15,6 @@
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
-//background worker, will do periodical routes cleanup and update current clock-value
 RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress _gateway, const uint _extraTtl, const int _mgIntervalSec, const int _mgPercent):
     logger(_logger),
     ifname(_ifname),
@@ -24,6 +23,7 @@ RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, cons
     mgIntervalSec(_mgIntervalSec),
     mgPercent(_mgPercent)
 {
+    UpdateCurTime();
     shutdownPending.store(false);
     sock=-1;
 }
@@ -77,9 +77,36 @@ void RoutingManager::OnShutdown()
     shutdownPending.store(true);
 }
 
+uint64_t RoutingManager::UpdateCurTime()
+{
+    const std::lock_guard<std::mutex> lock(opLock);
+    timespec time={};
+    clock_gettime(CLOCK_MONOTONIC,&time);
+    curTime.store((uint64_t)(unsigned)time.tv_sec);
+    return (uint64_t)(unsigned)time.tv_sec;
+}
+
 void RoutingManager::Worker()
 {
+    logger.Info()<<"RoutingManager worker starting up"<<std::endl;
+    auto prev=curTime.load();
+    while (!shutdownPending.load())
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        auto now=UpdateCurTime();
+        if(now-prev>=(unsigned)mgIntervalSec)
+        {
+            prev=now;
+            CleanStaleRoutes();
+        }
+    }
+    logger.Info()<<"Shuting down RoutingManager worker"<<std::endl;
+}
 
+void RoutingManager::CleanStaleRoutes()
+{
+    const std::lock_guard<std::mutex> lock(opLock);
+    //TODO: clean stale routes, up to max percent
 }
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
