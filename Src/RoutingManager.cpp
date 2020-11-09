@@ -149,11 +149,11 @@ void RoutingManager::_ProcessPendingInserts()
 {
     for (auto const &el : pendingInserts)
     {
+        //TODO: initiate remove of currently expired routes
         //re-add routes with valid expiration times
         _PushRoute(el.first,true); //push blackhole route
         if(ifCfg.Get().isUp)
             _PushRoute(el.first,false); //push regular route
-        //TODO: initiate remove of currently expired routes
     }
 }
 
