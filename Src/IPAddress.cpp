@@ -3,6 +3,18 @@
 #include <cstring>
 #include <arpa/inet.h>
 
+static int DetectIPVer(const char* const ip)
+{
+    unsigned char tmp[IP_ADDR_LEN]={};
+    auto check=inet_pton(AF_INET,ip,(void*)tmp);
+    if(check>0)
+        return 1;
+    check=inet_pton(AF_INET6,ip,(void*)tmp);
+    if(check>0)
+        return 2;
+    return 0;
+}
+
 IPAddress::RawIP::RawIP()
 {
     std::memset((void*)data,0,IP_ADDR_LEN);
@@ -10,7 +22,12 @@ IPAddress::RawIP::RawIP()
 
 IPAddress::RawIP::RawIP(const void* const source, const size_t len) : RawIP()
 {
-    std::memcpy((void*)data,source,len);
+    std::memcpy((void*)data,source,len>IP_ADDR_LEN?IP_ADDR_LEN:len);
+}
+
+IPAddress::RawIP::RawIP(int af, const char* const ip) : RawIP()
+{
+    inet_pton(af,ip,(void*)data);
 }
 
 IPAddress::IPAddress():
@@ -45,6 +62,13 @@ IPAddress::IPAddress(const std::string& rdata):
     isValid(rdata.length()==IPV6_ADDR_LEN || rdata.length()==IPV4_ADDR_LEN),
     isV6(rdata.length()==IPV6_ADDR_LEN),
     ip(!isValid?RawIP():RawIP(rdata.data(),rdata.length()))
+{
+}
+
+IPAddress::IPAddress(const char* const string):
+    isValid(DetectIPVer(string)>0),
+    isV6(isValid?DetectIPVer(string)==2:false),
+    ip(!isValid?RawIP():RawIP(isV6?AF_INET6:AF_INET,string))
 {
 }
 

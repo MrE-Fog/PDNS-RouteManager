@@ -18,6 +18,7 @@ class IPAddress
         IPAddress(const IPAddress &other);
         IPAddress(const rtattr * const rta);
         IPAddress(const std::string &rdata);
+        IPAddress(const char * const string);
 
         bool Equals(const IPAddress &other) const;
         bool Less(const IPAddress &other) const;
@@ -37,6 +38,7 @@ class IPAddress
         {
             RawIP();
             RawIP(const void * const source, const size_t len);
+            RawIP(int af, const char* const ip);
             unsigned char data[IP_ADDR_LEN];
         };
         const RawIP ip;
