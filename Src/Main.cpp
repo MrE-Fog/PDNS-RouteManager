@@ -34,12 +34,6 @@ int main (int argc, char *argv[])
         logger.Error() << "port number is too long!" << std::endl;
         return 1;
     }
-    auto port=std::atoi(argv[2]);
-    if(port<1||port>65535)
-    {
-        logger.Error() << "port number is incorrect!" << std::endl;
-        return 1;
-    }
 
     bool useByteSwap=false;
     if(argc>4)
@@ -56,7 +50,7 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
-    DNSReceiver dnsReceiver(logger,IPAddress(argv[1]),port,useByteSwap);
+    DNSReceiver dnsReceiver(logger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
     NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
 
     //start background workers, or perform post-setup init
