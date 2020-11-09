@@ -3,15 +3,17 @@
 
 #include "ILogger.h"
 #include <mutex>
+#include <atomic>
 
 class StdioLoggerFactory
 {
     private:
+        std::atomic<int> maxNameWD;
         std::mutex stdioLock;
-        timespec creationTime;
+        double creationTime;
     public:
         StdioLoggerFactory();
-        ILogger* CreateLogger(const char * const name);
+        ILogger* CreateLogger(const std::string &name);
         void DestroyLogger(ILogger* const target);
 };
 

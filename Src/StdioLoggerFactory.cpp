@@ -5,17 +5,22 @@
 class FinalStdioLogger final : public StdioLogger
 {
     public:
-        FinalStdioLogger(const timespec &time, const char * const name, std::mutex &extLock): StdioLogger(time, name, extLock) {};
+        FinalStdioLogger(const std::string &_name, const double &_time, std::atomic<int> &_nameWD, std::mutex &_extLock): StdioLogger(_name, _time, _nameWD, _extLock) {};
 };
 
 StdioLoggerFactory::StdioLoggerFactory()
 {
-    clock_gettime(CLOCK_MONOTONIC,&creationTime);
+    maxNameWD.store(1);
+    timespec time={};
+    clock_gettime(CLOCK_MONOTONIC,&time);
+    creationTime=(double)time.tv_sec+(double)time.tv_nsec/(double)1000000000L;
 }
 
-ILogger * StdioLoggerFactory::CreateLogger(const char* const name)
+ILogger * StdioLoggerFactory::CreateLogger(const std::string &name)
 {
-    return new FinalStdioLogger(creationTime,name,stdioLock);
+    if(name.length()>(unsigned)maxNameWD.load())
+        maxNameWD.store((signed)name.length());
+    return new FinalStdioLogger(name,creationTime,maxNameWD,stdioLock);
 }
 
 void StdioLoggerFactory::DestroyLogger(ILogger * const target)

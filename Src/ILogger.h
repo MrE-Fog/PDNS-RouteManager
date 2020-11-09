@@ -2,7 +2,6 @@
 #define ILOGGER_H
 
 #include "LogWriter.h"
-#include <iostream>
 
 class ILogger
 {

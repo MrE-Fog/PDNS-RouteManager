@@ -3,15 +3,18 @@
 
 #include "ILogger.h"
 #include <mutex>
+#include <atomic>
+#include <string>
 
 class StdioLogger : public ILogger
 {
     private:
-        const timespec &initialTime;
-        const char * const loggerName;
-        std::mutex &loggerLock;
+        const std::string name;
+        const double &initialTime;
+        std::atomic<int> &nameWD;
+        std::mutex &extLock;
     protected:
-        StdioLogger(const timespec &initialTime, const char * const name, std::mutex &ioLock);
+        StdioLogger(const std::string &name, const double &initialTime, std::atomic<int> &nameWD, std::mutex &extLock);
     public:
         LogWriter Info() final;
         LogWriter Warning() final;
