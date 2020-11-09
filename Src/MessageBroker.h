@@ -9,14 +9,14 @@
 #include <map>
 #include <set>
 
-class MessageBroker : public ISender
+class MessageBroker : public IMessageSender
 {
     private:
         std::mutex opLock;
-        std::set<ISubscriber*> subscribers;
+        std::set<IMessageSubscriber*> subscribers;
         std::map<std::thread::id,std::set<const void*>*> callers;
     public:
-        void AddSubscriber(ISubscriber& subscriber);
+        void AddSubscriber(IMessageSubscriber& subscriber);
         void SendMessage(const void * const sender, const IMessage &message) final;
 };
 

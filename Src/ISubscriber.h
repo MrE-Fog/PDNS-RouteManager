@@ -1,13 +1,13 @@
-#ifndef ISUBSCRIBER_H
-#define ISUBSCRIBER_H
+#ifndef IMESSAGESUBSCRIBER_H
+#define IMESSAGESUBSCRIBER_H
 
 #include "IMessage.h"
 
-class ISubscriber
+class IMessageSubscriber
 {
     public:
         virtual bool ReadyForMessage(const MsgType msgType) = 0;
         virtual void OnMessage(const IMessage &message) = 0;
 };
 
-#endif // ISUBSCRIBER_H
+#endif // IMESSAGESUBSCRIBER_H

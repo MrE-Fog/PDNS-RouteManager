@@ -1,7 +1,7 @@
 #include "MessageBroker.h"
 #include <vector>
 
-void MessageBroker::AddSubscriber(ISubscriber& subscriber)
+void MessageBroker::AddSubscriber(IMessageSubscriber& subscriber)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     subscribers.insert(&subscriber);
@@ -11,7 +11,7 @@ void MessageBroker::SendMessage(const void* const sender, const IMessage& messag
 {
     std::set<const void*> newSenders; //will not be used directly
     std::set<const void*> *curSenders=nullptr;
-    std::vector<ISubscriber*> curSubscribers;
+    std::vector<IMessageSubscriber*> curSubscribers;
 
     //create copy of subscribers list, check senders list for current thread for recursion
     {

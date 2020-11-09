@@ -5,7 +5,7 @@
 
 #include <atomic>
 
-class ShutdownHandler final: public ISubscriber
+class ShutdownHandler final: public IMessageSubscriber
 {
     private:
         std::atomic<bool> shutdownRequested;

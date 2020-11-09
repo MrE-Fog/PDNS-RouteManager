@@ -1,13 +1,13 @@
-#ifndef ISENDER_H
-#define ISENDER_H
+#ifndef IMESSAGESENDER_H
+#define IMESSAGESENDER_H
 
 #include "IMessage.h"
 
-class ISender
+class IMessageSender
 {
     public:
         virtual void SendMessage(const void * const sender, const IMessage &message) = 0;
 };
 
-#endif // ISENDER_H
+#endif // IMESSAGESENDER_H
 
