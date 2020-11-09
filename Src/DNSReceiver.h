@@ -13,7 +13,7 @@ class DNSReceiver : public WorkerBase
     private:
         ILogger &logger;
         IMessageSender &sender;
-        const timeval &timeout;
+        const timeval timeout;
         const IPAddress listenAddr;
         const int port;
         const bool useByteSwap;
@@ -23,7 +23,7 @@ class DNSReceiver : public WorkerBase
         void HandleError(const char* const message);
         uint16_t DecodeHeader(const void * const data) const;
     public:
-        DNSReceiver(ILogger &logger, IMessageSender &sender, const timeval &timeout, const IPAddress listenAddr, const int port, const bool useByteSwap);
+        DNSReceiver(ILogger &logger, IMessageSender &sender, const timeval timeout, const IPAddress listenAddr, const int port, const bool useByteSwap);
     protected: //WorkerBase
         void Worker() final;
         void OnShutdown() final;
