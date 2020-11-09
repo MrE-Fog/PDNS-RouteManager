@@ -5,6 +5,7 @@
 #include <string>
 
 #include <linux/rtnetlink.h>
+#include <sys/socket.h>
 
 //TODO: re-use defines from system include files
 #define IPV4_ADDR_LEN 4
