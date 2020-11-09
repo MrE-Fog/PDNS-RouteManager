@@ -1,22 +1,20 @@
 #include "StdioLogger.h"
 
-using namespace std;
-
 //TODO: add ability to set max verbosity level
 //TODO: customize ostreams somehow, to include extra header on every new line [TIME: MESSAGE TYPE]
 StdioLogger::StdioLogger() { }
 
-ostream& StdioLogger::Info()
+std::ostream& StdioLogger::Info()
 {
-    return cout;
+    return std::cout;
 }
 
-ostream& StdioLogger::Warning()
+std::ostream& StdioLogger::Warning()
 {
-    return cout;
+    return std::cout;
 }
 
-ostream& StdioLogger::Error()
+std::ostream& StdioLogger::Error()
 {
-    return cerr;
+    return std::cerr;
 }

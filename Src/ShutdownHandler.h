@@ -2,8 +2,8 @@
 #define SHUTDOWNHANDLER_H
 
 #include "ISubscriber.h"
+
 #include <atomic>
-#include <utility>
 
 class ShutdownHandler final: public ISubscriber
 {

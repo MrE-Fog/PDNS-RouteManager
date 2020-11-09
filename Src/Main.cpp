@@ -9,10 +9,6 @@
 #include <thread>
 #include <chrono>
 
-/**/
-
-
-
 int main (int argc, char *argv[])
 {
     const int timeoutMs=500; //TODO: read timeouts from config
@@ -28,21 +24,21 @@ int main (int argc, char *argv[])
     //configure essential stuff
     MessageBroker messageBroker;
     SignalHandler::Setup();
-    ShutdownHandler control;
-    messageBroker.AddSubscriber(control);
+    ShutdownHandler shutdownHandler;
+    messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
     NetDevTracker tracker(logger,messageBroker,timeoutTv,argv[3]);
 
-    //init
+    //start background workers, or perform post-setup init
     tracker.Startup();
 
     while(true)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        if(control.IsShutdownRequested())
+        if(shutdownHandler.IsShutdownRequested())
         {
-            if(control.GetEC()!=0)
+            if(shutdownHandler.GetEC()!=0)
                 logger.Error() << "One of background worker was failed, shuting down" << std::endl;
             else
                 logger.Info() << "Shuting down gracefully by signal from background worker" << std::endl;
@@ -52,7 +48,7 @@ int main (int argc, char *argv[])
             break;
     }
 
-    //shutdown
+    //shutdown background workers
     tracker.Shutdown();
 
     return  0;

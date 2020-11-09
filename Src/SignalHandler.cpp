@@ -1,4 +1,5 @@
 #include "SignalHandler.h"
+
 #include <csignal>
 #include <atomic>
 
