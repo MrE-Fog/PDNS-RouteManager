@@ -1,21 +1,29 @@
 #ifndef ROUTINGMANAGER_H
 #define ROUTINGMANAGER_H
 
+#include "ILogger.h"
+#include "IPAddress.h"
 #include "IMessageSubscriber.h"
 #include "WorkerBase.h"
 
 #include <mutex>
 #include <atomic>
 
-//TODO: gateway, extra ttl, management interval,
 class RoutingManager : public IMessageSubscriber, public WorkerBase
 {
     private:
+        ILogger &logger;
+        const char * const ifname;
+        const IPAddress gateway;
+        const uint extraTtl;
+        const int mgIntervalSec;
+        const int mgPercent;
+
         std::mutex opLock;
         std::atomic<bool> shutdownPending;
         int socket;
     public:
-        RoutingManager();
+        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress gateway, const uint extraTtl, const int mgIntervalSec, const int mgPercent);
         //WorkerBase
         void Worker() final;
         void OnShutdown() final;

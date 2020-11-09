@@ -2,7 +2,14 @@
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
-RoutingManager::RoutingManager()
+//background worker, will do periodical routes cleanup and update current clock-value
+RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, const IPAddress _gateway, const uint _extraTtl, const int _mgIntervalSec, const int _mgPercent):
+    logger(_logger),
+    ifname(_ifname),
+    gateway(_gateway),
+    extraTtl(_extraTtl),
+    mgIntervalSec(_mgIntervalSec),
+    mgPercent(_mgPercent)
 {
     shutdownPending.store(false);
     socket=-1;
@@ -32,7 +39,8 @@ void RoutingManager::OnShutdown()
     shutdownPending.store(true);
 }
 
-//background worker, will do periodical routes cleanup and update current clock-value
+
+
 void RoutingManager::Worker()
 {
 
