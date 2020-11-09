@@ -5,7 +5,6 @@
 #include "MessageBroker.h"
 #include "SignalHandler.h"
 #include "ShutdownHandler.h"
-#include "ProtobufHelper.h"
 
 #include <iostream>
 #include <thread>
@@ -38,10 +37,6 @@ int main (int argc, char *argv[])
     bool useByteSwap=false;
     if(argc>4)
         useByteSwap=(std::strncmp(argv[4],"true",4)==0);
-
-    //test protobuf
-   // ProtobufHelper pbHelper(logger,useByteSwap);
-   // pbHelper.Test("../../test1.pb");
 
     //configure essential stuff
     MessageBroker messageBroker;
