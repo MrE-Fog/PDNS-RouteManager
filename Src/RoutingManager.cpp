@@ -38,12 +38,15 @@ RoutingManager::RoutingManager(ILogger &_logger, const char* const _ifname, cons
 {
     _UpdateCurTime();
     shutdownPending.store(false);
+    started=false;
     sock=-1;
 }
 
 //overrodes for performing some extra-init
 bool RoutingManager::Startup()
 {
+    const std::lock_guard<std::mutex> lock(opLock);
+
     //open netlink socket
     logger.Info()<<"Preparing RoutingManager for interface: "<<ifname<<std::endl;
 
@@ -64,7 +67,7 @@ bool RoutingManager::Startup()
         return false;
     }
 
-    //TODO: set initial clock-value
+    started=true;
 
     //start background worker that will do periodical cleanup
     return WorkerBase::Startup();
@@ -75,6 +78,8 @@ bool RoutingManager::Shutdown()
     //stop background worker
     auto result=WorkerBase::Shutdown();
 
+    const std::lock_guard<std::mutex> lock(opLock);
+    started=false;
     //close netlink socket
     if(close(sock)!=0)
     {
@@ -147,6 +152,9 @@ static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, si
 
 void RoutingManager::_ProcessPendingInserts()
 {
+    //refuse to do anything if netlink socket is not initialized
+    if(!started)
+        return;
     for (auto const &el : pendingInserts)
     {
         //TODO: initiate remove of currently expired routes
@@ -238,11 +246,15 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
         return;
     }
 
-    //push blackhole route regardless of network state
-    _PushRoute(dest,true);
-    //push new route immediately, only if network is up and running
-    if(ifCfg.Get().isUp)
-        _PushRoute(dest,false);
+    //commence netlink operations only if socket is properly started
+    if(started)
+    {
+        //push blackhole route regardless of network state
+        _PushRoute(dest,true);
+        //push new route immediately, only if network is up and running
+        if(ifCfg.Get().isUp)
+            _PushRoute(dest,false);
+    }
 
     //add new pending route, or update it's expiration time
     auto pIT=pendingInserts.find(dest);
@@ -271,7 +283,7 @@ void RoutingManager::ConfirmRoute(const IPAddress &dest)
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
 {
-    return (!shutdownPending.load())&&(msgType==MSG_NETDEV_UPDATE||msgType==MSG_ROUTE_REQUEST||msgType==MSG_ROUTE_ADDED||msgType==MSG_ROUTE_REMOVED);
+    return (!shutdownPending.load())&&(msgType==MSG_NETDEV_UPDATE||msgType==MSG_ROUTE_REQUEST||msgType==MSG_ROUTE_ADDED||msgType==MSG_ROUTE_REMOVED||msgType==MSG_INIT_ROUTES);
 }
 
 //this logic executed from thread emitting the messages, and must be internally locked
@@ -294,6 +306,12 @@ void RoutingManager::OnMessage(const IMessage& message)
     {
         auto addMsg=static_cast<const IRouteAddedMessage&>(message);
         ConfirmRoute(addMsg.ip);
+        return;
+    }
+
+    if(message.msgType==MSG_INIT_ROUTES)
+    {
+        //TODO: install initial routes-list early after startup
         return;
     }
 }

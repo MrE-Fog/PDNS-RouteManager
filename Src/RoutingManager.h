@@ -34,6 +34,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         std::atomic<bool> shutdownPending;
         std::atomic<uint64_t> curTime;
         //all other fields must be accesed only using opLock mutex
+        bool started=false;
         int sock;
         ImmutableStorage<InterfaceConfig> ifCfg;
         //containters for storing routes at various states
@@ -48,7 +49,6 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         void ProcessNetDevUpdate(const InterfaceConfig &newConfig);
         //internal service methods that is not using opLock.
         uint64_t _UpdateCurTime();
-        uint32_t _UpdateSeqNum();
         void _ProcessPendingInserts();
         void _PushRoute(const IPAddress& ip, bool blackhole);
     public:
