@@ -56,9 +56,6 @@ int main (int argc, char *argv[])
     //timeout for main thread waiting for external signals
     const timespec sigTs={2,0};
 
-    StdioLoggerFactory logFactory;
-    auto mainLogger=logFactory.CreateLogger("Main");
-
     std::unordered_map<std::string,std::string> args;
     bool isArgValue=false;
     for(auto i=1;i<argc;++i)
@@ -104,6 +101,9 @@ int main (int argc, char *argv[])
 
     //TODO: parse remaining params
     return 2;
+
+    StdioLoggerFactory logFactory;
+    auto mainLogger=logFactory.CreateLogger("Main");
 
     //parse optional parameters
     const int metric=(argc>4)?std::atoi(argv[4]):100;
