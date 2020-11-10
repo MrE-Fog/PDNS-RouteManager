@@ -14,6 +14,29 @@
 #include <csignal>
 #include <string>
 
+void usage(const std::string &self)
+{
+    std::cerr<<"Usage: "<<self<<" [parameters]"<<std::endl;
+    std::cerr<<"  mandatory parameters:"<<std::endl;
+    std::cerr<<"    -l <ip-addr> listen ip-address to receive protobuf-encoded DNS packages."<<std::endl;
+    std::cerr<<"    -p <port-num> TCP port number to listen at."<<std::endl;
+    std::cerr<<"    -t <if-name> network interface that will be used for routing."<<std::endl;
+    std::cerr<<"  optional parameters:"<<std::endl;
+    std::cerr<<"    -rp <route priority> metric/priority number for generated routes."<<std::endl;
+    std::cerr<<"     100 by default. MUST NOT INTERFERE WITH ANY OTHER SYSTEM ROUTES"<<std::endl;
+    std::cerr<<"    -bp <blackhole-route priority> metric/priority number for generated"<<std::endl;
+    std::cerr<<"     killswitch (blackhole) protective routes, 101 by default."<<std::endl;
+    std::cerr<<"     MUST NOT INTERFERE WITH ANY OTHER ROUTES and must be higher than -rp"<<std::endl;
+    std::cerr<<"    -s <true|false> swap bytes when decoding protobuf messages."<<std::endl;
+    std::cerr<<"     true if PDNS service is running on architecture with different endianness"<<std::endl;
+    std::cerr<<"    -gw4 <ip-addr> ipv4 gateway address. not used with p-t-p interfaces"<<std::endl;
+    std::cerr<<"    -gw6 <ip-addr> ipv6 gateway address. not used with p-t-p interfaces"<<std::endl;
+    std::cerr<<"    -ttl <seconds> additional time interval added to route expiration-time"<<std::endl;
+    std::cerr<<"    -mi <seconds> interval to run expired route management task, 5 by default."<<std::endl;
+    std::cerr<<"    -mp <percent> maximum percent of expired routes removed at once."<<std::endl;
+    std::cerr<<"    -mr <retries> maximum retries when trying to install new route"<<std::endl;
+}
+
 int main (int argc, char *argv[])
 {
     //set timeouts used by background workers for network operations and some other events
@@ -31,7 +54,7 @@ int main (int argc, char *argv[])
     //TODO: add sane option parsing
     if(argc<4)
     {
-        mainLogger->Error() << "Usage: " << argv[0] << " <listen ip-addr> <port> <target netdev> [metric] [killswitch metric] [use byte swap: true|false] [gateway ipv4] [gateway ipv6] [extratTTL] [management interval] [max percent or routes to process at once] [maximum route-add retries]" << std::endl;
+        usage(argv[0]);
         return 1;
     }
 
