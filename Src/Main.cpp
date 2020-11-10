@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <csignal>
 #include <string>
+#include <unordered_map>
 
 void usage(const std::string &self)
 {
@@ -20,7 +21,7 @@ void usage(const std::string &self)
     std::cerr<<"  mandatory parameters:"<<std::endl;
     std::cerr<<"    -l <ip-addr> listen ip-address to receive protobuf-encoded DNS packages."<<std::endl;
     std::cerr<<"    -p <port-num> TCP port number to listen at."<<std::endl;
-    std::cerr<<"    -t <if-name> network interface that will be used for routing."<<std::endl;
+    std::cerr<<"    -i <if-name> network interface that will be used for routing."<<std::endl;
     std::cerr<<"  optional parameters:"<<std::endl;
     std::cerr<<"    -rp <route priority> metric/priority number for generated routes."<<std::endl;
     std::cerr<<"     100 by default. MUST NOT INTERFERE WITH ANY OTHER SYSTEM ROUTES"<<std::endl;
@@ -37,6 +38,13 @@ void usage(const std::string &self)
     std::cerr<<"    -mr <retries> maximum retries when trying to install new route"<<std::endl;
 }
 
+int param_error(const std::string &self, const std::string &message)
+{
+    std::cerr<<message<<std::endl;
+    usage(self);
+    return 1;
+}
+
 int main (int argc, char *argv[])
 {
     //set timeouts used by background workers for network operations and some other events
@@ -51,19 +59,51 @@ int main (int argc, char *argv[])
     StdioLoggerFactory logFactory;
     auto mainLogger=logFactory.CreateLogger("Main");
 
-    //TODO: add sane option parsing
-    if(argc<4)
+    std::unordered_map<std::string,std::string> args;
+    bool isArgValue=false;
+    for(auto i=1;i<argc;++i)
     {
-        usage(argv[0]);
-        return 1;
+        if(isArgValue)
+        {
+            args[argv[i-1]]=argv[i];
+            isArgValue=false;
+            continue;
+        }
+        if(std::string(argv[i]).length()<2||std::string(argv[i]).front()!='-')
+        {
+            std::cerr<<"Invalid cmdline argument: "<<argv[i]<<std::endl;
+            usage(argv[0]);
+            return 1;
+        }
+        isArgValue=true;
     }
 
+    if(args.empty())
+        return param_error(argv[0],"Mandatory parameters are missing!");
+
+    //parse listen address
+    if(args.find("-l")==args.end())
+        return param_error(argv[0],"Listen address is missing!");
+    IPAddress listenAddr(args["-l"].c_str());
+    if(!listenAddr.isValid)
+        return param_error(argv[0],"Listen address is invalid!");
+
+    //parse port number
+    if(args.find("-p")==args.end())
+        return param_error(argv[0],"TCP port number is missing!");
     //parse port
-    if(std::strlen(argv[2])>5)
-    {
-        mainLogger->Error() << "port number is too long!" << std::endl;
-        return 1;
-    }
+    if(args["-p"].length()>5||args["-p"].length()<1)
+         return param_error(argv[0],"TCP port number is too long or invalid!");
+    auto port=std::atoi(args["-p"].c_str());
+    if(port<1||port>65535)
+        return param_error(argv[0],"TCP port number is invalid!");
+
+    //parse interface name
+    if(args.find("-i")==args.end()||args["-i"].length()<1)
+        return param_error(argv[0],"Target interface name is missing or invalid!");
+
+    //TODO: parse remaining params
+    return 2;
 
     //parse optional parameters
     const int metric=(argc>4)?std::atoi(argv[4]):100;
