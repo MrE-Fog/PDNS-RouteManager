@@ -76,6 +76,7 @@ void NetDevTracker::Worker()
         return;
     }
 
+    bool ifFound=false;
     bool isUP=true;
     bool isPtP=false;
 
@@ -88,6 +89,7 @@ void NetDevTracker::Worker()
         if(std::strncmp(ifname,ifa->ifa_name,IFNAMSIZ)!=0)
             continue; //interface name not matched
 
+        ifFound=true;
         //add local ip for interface
         IPAddress localIP(ifa->ifa_addr);
         cfgStorage.Set(cfgStorage.Get().AddLocalIP(localIP));
@@ -102,6 +104,7 @@ void NetDevTracker::Worker()
         isPtP|=ISPTP(ifa);
         isUP&=ISUP(ifa);
     }
+    isUP&=ifFound;
 
     freeifaddrs(ifaddr);
     cfgStorage.Set(cfgStorage.Get().SetType(isPtP).SetState(isUP));
