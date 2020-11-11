@@ -25,6 +25,7 @@ class IPAddress
         void ToSA(void * const targetSA) const;
         void ToBinary(void * const outBuff) const;
 
+        std::string ToString() const;
         size_t GetHashCode() const;
         bool Equals(const IPAddress &other) const;
         bool Less(const IPAddress &other) const;

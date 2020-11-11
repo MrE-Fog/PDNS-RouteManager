@@ -93,6 +93,14 @@ void IPAddress::ToBinary(void *const outBuff) const
     std::memcpy(outBuff,(const void*)ip.data,isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
 }
 
+std::string IPAddress::ToString() const
+{
+    auto resultLen=isV6?INET6_ADDRSTRLEN:INET_ADDRSTRLEN;
+    char result[INET6_ADDRSTRLEN>INET_ADDRSTRLEN?INET6_ADDRSTRLEN:INET_ADDRSTRLEN];
+    inet_ntop(isV6?AF_INET6:AF_INET, ip.data, result, resultLen);
+    return std::string(result);
+}
+
 size_t IPAddress::GetHashCode() const
 {
     int rSz=sizeof(size_t);
