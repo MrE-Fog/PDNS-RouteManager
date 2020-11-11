@@ -26,13 +26,13 @@ void usage(const std::string &self)
     std::cerr<<"    -rp <route priority> metric/priority number for generated routes."<<std::endl;
     std::cerr<<"     100 by default. MUST NOT INTERFERE WITH ANY OTHER SYSTEM ROUTES"<<std::endl;
     std::cerr<<"    -bp <blackhole-route priority> metric/priority number for generated"<<std::endl;
-    std::cerr<<"     killswitch (blackhole) protective routes, 101 by default."<<std::endl;
+    std::cerr<<"     killswitch (blackhole) protective routes, rp+1 by default."<<std::endl;
     std::cerr<<"     MUST NOT INTERFERE WITH ANY OTHER ROUTES and must be higher than -rp"<<std::endl;
     std::cerr<<"    -s <true|false> swap bytes when decoding protobuf messages."<<std::endl;
     std::cerr<<"     true if PDNS service is running on architecture with different endianness"<<std::endl;
     std::cerr<<"    -gw4 <ip-addr> ipv4 gateway address. not used with p-t-p interfaces"<<std::endl;
     std::cerr<<"    -gw6 <ip-addr> ipv6 gateway address. not used with p-t-p interfaces"<<std::endl;
-    std::cerr<<"    -ttl <seconds> additional time interval added to route expiration-time"<<std::endl;
+    std::cerr<<"    -ttl <seconds> additional time interval added to route expiration-time."<<std::endl;
     std::cerr<<"    -mi <seconds> interval to run expired route management task, 5 by default."<<std::endl;
     std::cerr<<"    -mp <percent> maximum percent of expired routes removed at once."<<std::endl;
     std::cerr<<"    -mr <retries> maximum retries when trying to install new route"<<std::endl;
@@ -90,7 +90,7 @@ int main (int argc, char *argv[])
         return param_error(argv[0],"TCP port number is missing!");
     //parse port
     if(args["-p"].length()>5||args["-p"].length()<1)
-         return param_error(argv[0],"TCP port number is too long or invalid!");
+        return param_error(argv[0],"TCP port number is too long or invalid!");
     auto port=std::atoi(args["-p"].c_str());
     if(port<1||port>65535)
         return param_error(argv[0],"TCP port number is invalid!");
@@ -99,84 +99,108 @@ int main (int argc, char *argv[])
     if(args.find("-i")==args.end()||args["-i"].length()<1)
         return param_error(argv[0],"Target interface name is missing or invalid!");
 
-    //TODO: parse remaining params
-    return 2;
+    //optional params
+
+    //route priority
+    int metric=100;
+    if(args.find("-rp")!=args.end())
+    {
+        metric=std::atoi(args["-rp"].c_str());
+        if(metric<1)
+            return param_error(argv[0],"Route priority value is invalid!");
+    }
+
+    //blackhole/killswitch route priority
+    int ksMetric=metric+1;
+    if(args.find("-bp")!=args.end())
+    {
+        ksMetric=std::atoi(args["-bp"].c_str());
+        if(ksMetric<1)
+            return param_error(argv[0],"Blackhole route priority value is invalid!");
+        if(ksMetric<=metric)
+            return param_error(argv[0],"Blackhole route priority value must be > than regular route priority");
+    }
+
+    //byte swap
+    bool useByteSwap=false;
+    if(args.find("-s")!=args.end())
+    {
+        if(args["-s"]=="true")
+            useByteSwap=true;
+        else if(args["-s"]=="false")
+            useByteSwap=true;
+        else
+            return param_error(argv[0],"Use swap parameter is invalid!");
+    }
+
+    //gateway4
+    bool gw4Set=false;
+    if(args.find("-gw4")!=args.end())
+    {
+        if(!IPAddress(args["-gw4"].c_str()).isValid||IPAddress(args["-gw4"].c_str()).isV6)
+            return param_error(argv[0],"IPv4 gateway is invalid!");
+        gw4Set=true;
+    }
+    const IPAddress gateway4=gw4Set?IPAddress(args["-gw4"].c_str()):IPAddress();
+
+    //gateway6
+    bool gw6Set=false;
+    if(args.find("-gw6")!=args.end())
+    {
+        if(!IPAddress(args["-gw6"].c_str()).isValid||!IPAddress(args["-gw6"].c_str()).isV6)
+            return param_error(argv[0],"IPv6 gateway is invalid!");
+        gw6Set=true;
+    }
+    const IPAddress gateway6=gw6Set?IPAddress(args["-gw6"].c_str()):IPAddress();
+
+    //route priority
+    int extraTTL=60*150; //150 minutes - 2.5 houres
+    if(args.find("-ttl")!=args.end())
+    {
+        extraTTL=std::atoi(args["-ttl"].c_str());
+        if(extraTTL<1)
+            return param_error(argv[0],"Extra protective TTL value is invalid!");
+    }
+
+    //management interval
+    int mgIntervalSec=5;
+    if(args.find("-mi")!=args.end())
+    {
+        mgIntervalSec=std::atoi(args["-mi"].c_str());
+        if(mgIntervalSec<1)
+            return param_error(argv[0],"Management interval time is invalid!");
+    }
+
+    //management percent
+    int mgPercent=5;
+    if(args.find("-mp")!=args.end())
+    {
+        mgPercent=std::atoi(args["-mp"].c_str());
+        if(mgPercent<1||mgPercent>100)
+            return param_error(argv[0],"Percent of routes managed at once is invalid!");
+    }
+
+    //retry count
+    int addRetryCnt=60;
+    if(args.find("-mr")!=args.end())
+    {
+        addRetryCnt=std::atoi(args["-mr"].c_str());
+        if(addRetryCnt<1)
+            return param_error(argv[0],"Route-add retry count is invalid");
+    }
 
     StdioLoggerFactory logFactory;
     auto mainLogger=logFactory.CreateLogger("Main");
-
-    //parse optional parameters
-    const int metric=(argc>4)?std::atoi(argv[4]):100;
-    const int ksMetric=(argc>5)?std::atoi(argv[5]):101;
-    const bool useByteSwap=(argc>6)?(std::strncmp(argv[6],"true",4)==0):false;
-    const IPAddress gateway4=(argc>7)?IPAddress(argv[7]):IPAddress("127.0.0.1");
-    const IPAddress gateway6=(argc>8)?IPAddress(argv[8]):IPAddress("::1");
-    const uint extraTTL=(argc>9)?(uint)std::atoi(argv[9]):(uint)(120*60);
-    const int mgIntervalSec=(argc>10)?std::atoi(argv[10]):5;
-    const int mgPercent=(argc>11)?std::atoi(argv[11]):5; //management worker run every 5 seconds (approximately)
-    const int addRetryCnt=(argc>12)?std::atoi(argv[12]):60; //with 5 seconds interval it gives us 300 seconds
-
-    bool gw4Set=false;
-    bool gw6Set=false;
-
-    if(metric<1)
-    {
-        mainLogger->Error() << "metric number is invalid!" << std::endl;
-        return 1;
-    }
-
-    if(ksMetric<1||ksMetric<=metric)
-    {
-        mainLogger->Error() << "killswitch metric number is incorrect, it must be > main metric" << std::endl;
-        return 1;
-    }
-
-    if(!gateway4.isValid||gateway4.isV6)
-    {
-        mainLogger->Error() << "ipv4 gateway address is invalid!" << std::endl;
-        return 1;
-    }
-
-    if(!gateway4.Equals(IPAddress("127.0.0.1")))
-        gw4Set=true;
-
-    if(!gateway6.isValid||!gateway6.isV6)
-    {
-        mainLogger->Error() << "ipv6 gateway address is invalid!" << std::endl;
-        return 1;
-    }
-
-    if(!gateway6.Equals(IPAddress("::1")))
-        gw6Set=true;
-
-    if(extraTTL<1)
-    {
-        mainLogger->Error() << "extraTTL time is invalid!" << std::endl;
-        return 1;
-    }
-
-    if(mgIntervalSec<1)
-    {
-        mainLogger->Error() << "management interval time is invalid!" << std::endl;
-        return 1;
-    }
-
-    if(mgPercent<1 || mgPercent>100)
-    {
-        mainLogger->Error() << "management percent value is invalid!" << std::endl;
-        return 1;
-    }
-
-    if(addRetryCnt<1)
-    {
-        mainLogger->Error() << "route-add max retries count is invalid" << std::endl;
-        return 1;
-    }
-
-    //loggers
     auto routingMgrLogger=logFactory.CreateLogger("Routing Manager");
     auto dnsReceiverLogger=logFactory.CreateLogger("DNS Receiver");
     auto trackerLogger=logFactory.CreateLogger("Network Tracker");
+
+    //dump current configuration
+    mainLogger->Info()<<"Starting up";
+    mainLogger->Info()<<"listening at "<<listenAddr<<" port "<<port<<"; routing via "<<args["-i"]<<" interface";
+    mainLogger->Info()<<"route prio: "<<metric<<"; blkhole-route prio: "<<ksMetric<<"; extra ttl: "<<extraTTL<<"; use byte swap: "<<(useByteSwap?"true":"false");
+    mainLogger->Info()<<"ipv4 gateway: "<<(gw4Set?gateway4.ToString():std::string("not set"))<<"; ipv6 gateway: "<<(gw6Set?gateway6.ToString():std::string("not set"));
+    mainLogger->Info()<<"management interval: "<<mgIntervalSec<<"; percent of routes to manage at once: "<<mgPercent<<"%; route-add max tries count: "<<addRetryCnt;
 
     //configure essential stuff
     MessageBroker messageBroker;
@@ -184,10 +208,10 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
-    RoutingManager routingMgr(*routingMgrLogger,argv[3],gw4Set?gateway4:IPAddress(),gw6Set?gateway6:IPAddress(),extraTTL,mgIntervalSec,mgPercent,metric,ksMetric,addRetryCnt);
+    RoutingManager routingMgr(*routingMgrLogger,args["-i"].c_str(),gateway4,gateway6,extraTTL,mgIntervalSec,mgPercent,metric,ksMetric,addRetryCnt);
     messageBroker.AddSubscriber(routingMgr);
-    DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,IPAddress(argv[1]),std::atoi(argv[2]),useByteSwap);
-    NetDevTracker tracker(*trackerLogger,messageBroker,timeoutTv,metric,argv[3]);
+    DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,listenAddr,port,useByteSwap);
+    NetDevTracker tracker(*trackerLogger,messageBroker,timeoutTv,metric,args["-i"].c_str());
 
     //create sigset_t struct with signals
     sigset_t sigset;
