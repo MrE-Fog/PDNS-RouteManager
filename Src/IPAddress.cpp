@@ -66,9 +66,9 @@ IPAddress::IPAddress(const void * const raw, const size_t len):
 }
 
 IPAddress::IPAddress(const std::string &string):
-    isValid(DetectIPVer(string.data())>0),
-    isV6(isValid?DetectIPVer(string.data())==2:false),
-    ip(!isValid?RawIP():RawIP(isV6?AF_INET6:AF_INET,string.data()))
+    isValid(DetectIPVer(string.c_str())>0),
+    isV6(isValid?DetectIPVer(string.c_str())==2:false),
+    ip(!isValid?RawIP():RawIP(isV6?AF_INET6:AF_INET,string.c_str()))
 {
 }
 
