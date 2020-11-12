@@ -23,9 +23,9 @@ class IPAddress
         IPAddress(const std::string &string);
 
         void ToSA(void * const targetSA) const;
-        void ToBinary(void * const outBuff) const;
-
+        const void * RawData() const;
         std::string ToString() const;
+
         size_t GetHashCode() const;
         bool Equals(const IPAddress &other) const;
         bool Less(const IPAddress &other) const;

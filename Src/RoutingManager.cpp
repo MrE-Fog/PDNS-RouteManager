@@ -234,9 +234,7 @@ void RoutingManager::_ProcessRoute(const IPAddress &ip, const bool blackhole, co
     msg.rt.rtm_family=ip.isV6?AF_INET6:AF_INET;
 
     //add destination
-    unsigned char addr[IP_ADDR_LEN]={};
-    ip.ToBinary(addr);
-    AddRTA(&msg.nl,RTA_DST,addr,ip.isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
+    AddRTA(&msg.nl,RTA_DST,ip.RawData(),ip.isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
 
     if(!blackhole)
     {
@@ -253,17 +251,9 @@ void RoutingManager::_ProcessRoute(const IPAddress &ip, const bool blackhole, co
     if(!blackhole && !ifCfg.Get().isPtP)
     {
         if(gateway4.isValid && !ip.isV6)
-        {
-            unsigned char gw[IP_ADDR_LEN]={};
-            gateway4.ToBinary(gw);
-            AddRTA(&msg.nl,RTA_GATEWAY,gw,IPV4_ADDR_LEN);
-        }
+            AddRTA(&msg.nl,RTA_GATEWAY,gateway4.RawData(),IPV4_ADDR_LEN);
         if(gateway6.isValid && ip.isV6)
-        {
-            unsigned char gw[IP_ADDR_LEN]={};
-            gateway6.ToBinary(gw);
-            AddRTA(&msg.nl,RTA_GATEWAY,gw,IPV6_ADDR_LEN);
-        }
+            AddRTA(&msg.nl,RTA_GATEWAY,gateway6.RawData(),IPV6_ADDR_LEN);
     }
 
     //send netlink message:

@@ -88,9 +88,9 @@ void IPAddress::ToSA(void* const targetSA) const
     }
 }
 
-void IPAddress::ToBinary(void *const outBuff) const
+const void * IPAddress::RawData() const
 {
-    std::memcpy(outBuff,(const void*)ip.data,isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN);
+    return ip.data;
 }
 
 std::string IPAddress::ToString() const
