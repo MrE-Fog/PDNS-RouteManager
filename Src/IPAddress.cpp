@@ -58,10 +58,10 @@ IPAddress::IPAddress(const rtattr* const rta):
 {
 }
 
-IPAddress::IPAddress(const std::string& rdata):
-    isValid(rdata.length()==IPV6_ADDR_LEN || rdata.length()==IPV4_ADDR_LEN),
-    isV6(rdata.length()==IPV6_ADDR_LEN),
-    ip(!isValid?RawIP():RawIP(rdata.data(),rdata.length()))
+IPAddress::IPAddress(const void * const raw, const size_t len):
+    isValid(len==IPV6_ADDR_LEN || len==IPV4_ADDR_LEN),
+    isV6(len==IPV6_ADDR_LEN),
+    ip(!isValid?RawIP():RawIP(raw,len))
 {
 }
 

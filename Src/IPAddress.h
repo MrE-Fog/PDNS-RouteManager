@@ -19,7 +19,7 @@ class IPAddress
         IPAddress(const sockaddr * const sa);
         IPAddress(const IPAddress &other);
         IPAddress(const rtattr * const rta);
-        IPAddress(const std::string &rdata);
+        IPAddress(const void * const raw, const size_t len);
         IPAddress(const char * const string);
 
         void ToSA(void * const targetSA) const;

@@ -245,7 +245,7 @@ void DNSReceiver::Worker()
                                     logger.Warning()<<"Unsupported dns resource record provided -> name="<<name<<",type="<<type<<",ttl="<<ttl<<",rdata len="<<rdata.length()<<std::endl;
                                 else
                                 {
-                                    IPAddress ip(rdata);
+                                    IPAddress ip(rdata.data(),rdata.length());
                                     if(!ip.isValid)
                                         logger.Warning()<<"Invalid ip address decoded for response -> name="<<name<<",type="<<type<<",ttl="<<ttl<<",rdata len="<<rdata.length()<<std::endl;
                                     else
