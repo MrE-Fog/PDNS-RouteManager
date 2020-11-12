@@ -208,7 +208,7 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(shutdownHandler);
 
     //create main worker-instances
-    RoutingManager routingMgr(*routingMgrLogger,args["-i"].c_str(),gateway4,gateway6,extraTTL,mgIntervalSec,mgPercent,metric,ksMetric,addRetryCnt);
+    RoutingManager routingMgr(*routingMgrLogger,args["-i"],gateway4,gateway6,extraTTL,mgIntervalSec,mgPercent,metric,ksMetric,addRetryCnt);
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,listenAddr,port,useByteSwap);
     NetDevTracker tracker(*trackerLogger,messageBroker,timeoutTv,metric,args["-i"].c_str());
