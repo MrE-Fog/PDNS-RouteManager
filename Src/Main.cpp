@@ -191,9 +191,9 @@ int main (int argc, char *argv[])
 
     StdioLoggerFactory logFactory;
     auto mainLogger=logFactory.CreateLogger("Main");
-    auto routingMgrLogger=logFactory.CreateLogger("Routing Manager");
-    auto dnsReceiverLogger=logFactory.CreateLogger("DNS Receiver");
-    auto trackerLogger=logFactory.CreateLogger("Network Tracker");
+    auto routingMgrLogger=logFactory.CreateLogger("RT_Man");
+    auto dnsReceiverLogger=logFactory.CreateLogger("DNS_Rc");
+    auto trackerLogger=logFactory.CreateLogger("ND_Trk");
 
     //dump current configuration
     mainLogger->Info()<<"Starting up";
