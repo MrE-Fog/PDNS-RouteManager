@@ -65,10 +65,10 @@ IPAddress::IPAddress(const void * const raw, const size_t len):
 {
 }
 
-IPAddress::IPAddress(const char* const string):
-    isValid(DetectIPVer(string)>0),
-    isV6(isValid?DetectIPVer(string)==2:false),
-    ip(!isValid?RawIP():RawIP(isV6?AF_INET6:AF_INET,string))
+IPAddress::IPAddress(const std::string &string):
+    isValid(DetectIPVer(string.data())>0),
+    isV6(isValid?DetectIPVer(string.data())==2:false),
+    ip(!isValid?RawIP():RawIP(isV6?AF_INET6:AF_INET,string.data()))
 {
 }
 

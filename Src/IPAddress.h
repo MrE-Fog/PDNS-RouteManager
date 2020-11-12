@@ -20,7 +20,7 @@ class IPAddress
         IPAddress(const IPAddress &other);
         IPAddress(const rtattr * const rta);
         IPAddress(const void * const raw, const size_t len);
-        IPAddress(const char * const string);
+        IPAddress(const std::string &string);
 
         void ToSA(void * const targetSA) const;
         void ToBinary(void * const outBuff) const;

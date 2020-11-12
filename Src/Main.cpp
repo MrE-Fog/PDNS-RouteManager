@@ -81,7 +81,7 @@ int main (int argc, char *argv[])
     //parse listen address
     if(args.find("-l")==args.end())
         return param_error(argv[0],"Listen address is missing!");
-    IPAddress listenAddr(args["-l"].c_str());
+    IPAddress listenAddr(args["-l"]);
     if(!listenAddr.isValid)
         return param_error(argv[0],"Listen address is invalid!");
 
@@ -137,21 +137,21 @@ int main (int argc, char *argv[])
     bool gw4Set=false;
     if(args.find("-gw4")!=args.end())
     {
-        if(!IPAddress(args["-gw4"].c_str()).isValid||IPAddress(args["-gw4"].c_str()).isV6)
+        if(!IPAddress(args["-gw4"]).isValid||IPAddress(args["-gw4"]).isV6)
             return param_error(argv[0],"IPv4 gateway is invalid!");
         gw4Set=true;
     }
-    const IPAddress gateway4=gw4Set?IPAddress(args["-gw4"].c_str()):IPAddress();
+    const IPAddress gateway4=gw4Set?IPAddress(args["-gw4"]):IPAddress();
 
     //gateway6
     bool gw6Set=false;
     if(args.find("-gw6")!=args.end())
     {
-        if(!IPAddress(args["-gw6"].c_str()).isValid||!IPAddress(args["-gw6"].c_str()).isV6)
+        if(!IPAddress(args["-gw6"]).isValid||!IPAddress(args["-gw6"]).isV6)
             return param_error(argv[0],"IPv6 gateway is invalid!");
         gw6Set=true;
     }
-    const IPAddress gateway6=gw6Set?IPAddress(args["-gw6"].c_str()):IPAddress();
+    const IPAddress gateway6=gw6Set?IPAddress(args["-gw6"]):IPAddress();
 
     //route priority
     int extraTTL=60*150; //150 minutes - 2.5 houres
