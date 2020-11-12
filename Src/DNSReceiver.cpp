@@ -31,13 +31,13 @@ uint16_t DNSReceiver::DecodeHeader(const void * const data) const
     return useByteSwap?(uint16_t)((*((const uint16_t*)data)&0x00FF)<<8|(*((const uint16_t*)data)&0xFF00)>>8):*((const uint16_t*)data);
 }
 
-void DNSReceiver::HandleError(const char * const message)
+void DNSReceiver::HandleError(const std::string &message)
 {
     logger.Error()<<message<<std::endl;
     sender.SendMessage(this,ShutdownMessage(1));
 }
 
-void DNSReceiver::HandleError(int ec, const char * const message)
+void DNSReceiver::HandleError(int ec, const std::string &message)
 {
     logger.Error()<<message<<strerror(ec)<<std::endl;
     sender.SendMessage(this,ShutdownMessage(ec));
