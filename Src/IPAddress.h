@@ -45,7 +45,7 @@ class IPAddress
         {
             RawIP();
             RawIP(const void * const source, const size_t len);
-            RawIP(int af, const char* const ip);
+            RawIP(int af, const char * const ip);
             unsigned char data[IP_ADDR_LEN];
         };
         const RawIP ip;

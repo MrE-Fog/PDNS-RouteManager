@@ -25,7 +25,7 @@ IPAddress::RawIP::RawIP(const void* const source, const size_t len) : RawIP()
     std::memcpy((void*)data,source,len>IP_ADDR_LEN?IP_ADDR_LEN:len);
 }
 
-IPAddress::RawIP::RawIP(int af, const char* const ip) : RawIP()
+IPAddress::RawIP::RawIP(int af, const char * const ip) : RawIP()
 {
     inet_pton(af,ip,(void*)data);
 }
