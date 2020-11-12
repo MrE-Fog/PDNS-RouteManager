@@ -181,7 +181,7 @@ void DNSReceiver::Worker()
                 bool headerPending=true;
                 size_t dataLeft=2;
                 size_t dataSize=2;
-                unsigned char* data[65536]={}; //uint16_t header may only encode 64kib of data
+                unsigned char data[65536]={}; //uint16_t header may only encode 64kib of data
                 while(!shutdownPending.load())
                 {
                     //wait for data
