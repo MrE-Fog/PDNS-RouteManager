@@ -211,7 +211,7 @@ int main (int argc, char *argv[])
     RoutingManager routingMgr(*routingMgrLogger,args["-i"],gateway4,gateway6,extraTTL,mgIntervalSec,mgPercent,metric,ksMetric,addRetryCnt);
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,listenAddr,port,useByteSwap);
-    NetDevTracker tracker(*trackerLogger,messageBroker,timeoutTv,metric,args["-i"].c_str());
+    NetDevTracker tracker(*trackerLogger,messageBroker,args["-i"],timeoutTv,metric);
 
     //create sigset_t struct with signals
     sigset_t sigset;

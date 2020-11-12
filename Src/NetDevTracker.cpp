@@ -21,7 +21,7 @@ class NetDevUpdateMessage: public INetDevUpdateMessage { public: NetDevUpdateMes
 class RouteAddedMessage: public IRouteAddedMessage { public: RouteAddedMessage(const IPAddress &_ip):IRouteAddedMessage(_ip){} };
 class RouteRemovedMessage: public IRouteRemovedMessage { public: RouteRemovedMessage(const IPAddress &_ip):IRouteRemovedMessage(_ip){} };
 
-NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const int _metric, const char* const _ifname):
+NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const std::string &_ifname, const timeval _timeout, const int _metric):
     ifname(_ifname),
     timeout(_timeout),
     metric(_metric),
@@ -86,7 +86,7 @@ void NetDevTracker::Worker()
             continue; //no address
         if(ifa->ifa_addr->sa_family!=AF_INET && ifa->ifa_addr->sa_family!=AF_INET6)
             continue; //unsupported interface family
-        if(std::strncmp(ifname,ifa->ifa_name,IFNAMSIZ)!=0)
+        if(std::strncmp(ifname.c_str(),ifa->ifa_name,IFNAMSIZ)!=0)
             continue; //interface name not matched
 
         ifFound=true;
@@ -168,9 +168,9 @@ void NetDevTracker::Worker()
             else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK)
             {
                 auto *ifl = (ifinfomsg*)NLMSG_DATA(nh);
-                char msg_ifname[IFNAMSIZ];
+                char msg_ifname[IFNAMSIZ]={};
                 if_indextoname(ifl->ifi_index, msg_ifname);
-                if(std::strncmp(ifname,msg_ifname,IFNAMSIZ)!=0)
+                if(std::strncmp(ifname.c_str(),msg_ifname,IFNAMSIZ)!=0)
                     continue; //interface name not matched
                 if(nh->nlmsg_type == RTM_DELLINK) //link disappeared, set state to false
                     cfgStorage.Set(cfgStorage.Get().SetState(false)); //NOTE: TODO: maybe we also need to update interface type with SetType
@@ -180,9 +180,9 @@ void NetDevTracker::Worker()
             else if (nh->nlmsg_type == RTM_NEWADDR || nh->nlmsg_type == RTM_DELADDR)
             {
                 auto *ifa = (ifaddrmsg*)NLMSG_DATA(nh);
-                char msg_ifname[IFNAMSIZ];
+                char msg_ifname[IFNAMSIZ]={};
                 if_indextoname(ifa->ifa_index, msg_ifname);
-                if(std::strncmp(ifname,msg_ifname,IFNAMSIZ)!=0)
+                if(std::strncmp(ifname.c_str(),msg_ifname,IFNAMSIZ)!=0)
                     continue; //interface name not matched
                 //mark config as updated for now, even if no changes in addresses was performed
                 cfgStorage.isUpdated=true;
@@ -226,7 +226,7 @@ void NetDevTracker::Worker()
                     else if(rth->rta_type==RTA_PRIORITY)
                         memcpy((void*)&rt_metric,RTA_DATA(rth),sizeof(int));
                 }
-                if(metric!=rt_metric||std::strncmp(ifname,rt_ifname,IFNAMSIZ)!=0)
+                if(metric!=rt_metric||std::strncmp(ifname.c_str(),rt_ifname,IFNAMSIZ)!=0)
                     continue; //metric/priority or interface name not matched
                 if(!dest.Get().isValid)
                 {
