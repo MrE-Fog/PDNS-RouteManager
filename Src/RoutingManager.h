@@ -19,7 +19,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
     private:
         //constants and thread-safe stuff
         ILogger &logger;
-        const char * const ifname;
+        const std::string ifname;
         const IPAddress gateway4;
         const IPAddress gateway6;
         const uint extraTTL;
@@ -54,7 +54,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         void _ProcessRoute(const IPAddress &ip, const bool blackhole, const bool isAddRequest);
         void _ProcessStaleRoutes();
     public:
-        RoutingManager(ILogger &logger, const char * const ifname, const IPAddress &gateway4, const IPAddress &gateway6, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric, const int addRetryCount);
+        RoutingManager(ILogger &logger, const std::string &ifname, const IPAddress &gateway4, const IPAddress &gateway6, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric, const int addRetryCount);
         //WorkerBase
         void Worker() final;
         void OnShutdown() final;
