@@ -37,6 +37,8 @@ void usage(const std::string &self)
     std::cerr<<"    -mi <seconds> interval to run expired route management task, 5 by default."<<std::endl;
     std::cerr<<"    -mp <percent> maximum percent of expired routes removed at once."<<std::endl;
     std::cerr<<"    -mr <retries> maximum retries when trying to install new route"<<std::endl;
+    std::cerr<<"    -fr <filename> file with backup of current routes, used for crash recover"<<std::endl;
+    std::cerr<<"    -fi <seconds> approximate interval between attempting to perform save"<<std::endl;
 }
 
 int param_error(const std::string &self, const std::string &message)
@@ -190,6 +192,16 @@ int main (int argc, char *argv[])
             return param_error(argv[0],"Route-add retry count is invalid");
     }
 
+    std::string saveFile=args.find("-fr")!=args.end()?args["-fr"]:"";
+
+    int saveInterval=5;
+    if(args.find("-fi")!=args.end())
+    {
+        saveInterval=std::atoi(args["-fi"].c_str());
+        if(saveInterval<1)
+            return param_error(argv[0],"Backup file save interval is incorrect");
+    }
+
     StdioLoggerFactory logFactory;
     auto mainLogger=logFactory.CreateLogger("Main");
     auto routingMgrLogger=logFactory.CreateLogger("RT_Man");
@@ -215,8 +227,9 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,listenAddr,port,useByteSwap);
     NetDevTracker tracker(*trackerLogger,messageBroker,args["-i"],timeoutTv,metric);
-    StateSaver saver(*saverLogger);
-    messageBroker.AddSubscriber(saver);
+    StateSaver saver(*saverLogger, saveFile, saveInterval, timeoutMs);
+    if(!saveFile.empty())
+        messageBroker.AddSubscriber(saver);
 
     //create sigset_t struct with signals
     sigset_t sigset;
@@ -231,7 +244,8 @@ int main (int argc, char *argv[])
     routingMgr.Startup();
     dnsReceiver.Startup();
     tracker.Startup();
-    saver.Startup();
+    if(!saveFile.empty())
+        saver.Startup();
 
     while(true)
     {
@@ -262,13 +276,15 @@ int main (int argc, char *argv[])
     dnsReceiver.RequestShutdown();
     tracker.RequestShutdown();
     routingMgr.RequestShutdown();
-    saver.RequestShutdown();
+    if(!saveFile.empty())
+        saver.RequestShutdown();
 
     //wait for background workers shutdown complete
     dnsReceiver.Shutdown();
     tracker.Shutdown();
     routingMgr.Shutdown();
-    saver.Shutdown();
+    if(!saveFile.empty())
+        saver.Shutdown();
 
     logFactory.DestroyLogger(saverLogger);
     logFactory.DestroyLogger(trackerLogger);

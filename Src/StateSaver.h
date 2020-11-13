@@ -12,11 +12,13 @@ class StateSaver : public IMessageSubscriber, public WorkerBase
 {
     private:
         ILogger &logger;
+        const std::string filename;
+        const int saveInterval;
+        const int sleepMS;
         std::atomic<bool> shutdownRequested;
         std::mutex opLock;
-
     public:
-        StateSaver(ILogger &logger);
+        StateSaver(ILogger &logger, const std::string &filename, const int saveInterval, const int sleepMS);
         //WorkerBase
         void Worker() final;
         void OnShutdown() final;
