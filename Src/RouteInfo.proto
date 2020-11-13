@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package PDNSRMProto;
+
+message RouteInfo
+{
+  required bool Pending = 1;
+  required uint64 Expire = 2;
+  required bytes IPAddr = 3;
+}

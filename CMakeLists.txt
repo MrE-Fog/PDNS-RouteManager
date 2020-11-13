@@ -43,7 +43,7 @@ find_package(Threads REQUIRED)
 #protobuf
 find_package(Protobuf REQUIRED)
 include_directories(${Protobuf_INCLUDE_DIRS})
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROJECT_SOURCE_DIR}/Src/dnsmessage.proto)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROJECT_SOURCE_DIR}/Src/dnsmessage.proto ${PROJECT_SOURCE_DIR}/Src/RouteInfo.proto)
 set_source_files_properties(${PROTO_SRCS} PROPERTIES COMPILE_FLAGS "-Wno-conversion -Wno-unused-parameter -Wno-array-bounds -Wno-strict-overflow")
 
 #qt creator trick
