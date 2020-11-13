@@ -3,6 +3,7 @@
 #include "RoutingManager.h"
 #include "NetDevTracker.h"
 #include "DNSReceiver.h"
+#include "StateSaver.h"
 #include "MessageBroker.h"
 #include "ShutdownHandler.h"
 
@@ -194,6 +195,8 @@ int main (int argc, char *argv[])
     auto routingMgrLogger=logFactory.CreateLogger("RT_Man");
     auto dnsReceiverLogger=logFactory.CreateLogger("DNS_Rc");
     auto trackerLogger=logFactory.CreateLogger("ND_Trk");
+    auto saverLogger=logFactory.CreateLogger("ST_Svr");
+
 
     //dump current configuration
     mainLogger->Info()<<"Starting up";
@@ -212,6 +215,8 @@ int main (int argc, char *argv[])
     messageBroker.AddSubscriber(routingMgr);
     DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,listenAddr,port,useByteSwap);
     NetDevTracker tracker(*trackerLogger,messageBroker,args["-i"],timeoutTv,metric);
+    StateSaver saver(*saverLogger);
+    messageBroker.AddSubscriber(saver);
 
     //create sigset_t struct with signals
     sigset_t sigset;
@@ -226,6 +231,7 @@ int main (int argc, char *argv[])
     routingMgr.Startup();
     dnsReceiver.Startup();
     tracker.Startup();
+    saver.Startup();
 
     while(true)
     {
@@ -256,12 +262,15 @@ int main (int argc, char *argv[])
     dnsReceiver.RequestShutdown();
     tracker.RequestShutdown();
     routingMgr.RequestShutdown();
+    saver.RequestShutdown();
 
     //wait for background workers shutdown complete
     dnsReceiver.Shutdown();
     tracker.Shutdown();
     routingMgr.Shutdown();
+    saver.Shutdown();
 
+    logFactory.DestroyLogger(saverLogger);
     logFactory.DestroyLogger(trackerLogger);
     logFactory.DestroyLogger(dnsReceiverLogger);
     logFactory.DestroyLogger(routingMgrLogger);
