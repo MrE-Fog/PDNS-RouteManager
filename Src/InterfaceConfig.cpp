@@ -59,6 +59,26 @@ InterfaceConfig InterfaceConfig::SetType(const bool _isPtP) const
     return InterfaceConfig(isUp,_isPtP,localIPs,remoteIPs);
 }
 
+bool InterfaceConfig::isIPV4Avail() const
+{
+    if(!isUp)
+        return false;
+    for(auto el: localIPs)
+        if(el.isValid && !el.isV6)
+            return true;
+    return false;
+}
+
+bool InterfaceConfig::isIPV6Avail() const
+{
+    if(!isUp)
+        return false;
+    for(auto el: localIPs)
+        if(el.isValid && el.isV6)
+            return true;
+    return false;
+}
+
 std::ostream& operator<<(std::ostream& stream, const InterfaceConfig& target)
 {
     stream<<"isUp="<<target.isUp<<",isPtP="<<target.isPtP;
