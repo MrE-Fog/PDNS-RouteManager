@@ -81,20 +81,27 @@ void NetDevTracker::Worker()
     bool isUP=true;
     bool isPtP=false;
 
+    logger.Info()<<"Reading initial interface configuration";
+
     for(auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
     {
         if(ifa->ifa_addr==NULL)
             continue; //no address
+        logger.Info()<<"Evaluating interface: "<<ifa->ifa_name;
         if(ifa->ifa_addr->sa_family!=AF_INET && ifa->ifa_addr->sa_family!=AF_INET6)
             continue; //unsupported interface family
+        logger.Info()<<"Unsupported family: "<<ifa->ifa_name;
         if(std::strncmp(ifname.c_str(),ifa->ifa_name,IFNAMSIZ)!=0)
             continue; //interface name not matched
 
         ifFound=true;
+
+        logger.Info()<<"Adding new local ip";
         //add local ip for interface
         IPAddress localIP(ifa->ifa_addr);
         cfgStorage.Set(cfgStorage.Get().AddLocalIP(localIP));
 
+        logger.Info()<<"Adding new remote ip";
         //set remote address - either broadcast or ptp
         if(ISPTP(ifa))
             cfgStorage.Set(cfgStorage.Get().AddRemoteIP(IPAddress(ifa->ifa_dstaddr)));
@@ -107,6 +114,7 @@ void NetDevTracker::Worker()
     }
     isUP&=ifFound;
 
+    logger.Info()<<"freeing ifaddr";
     freeifaddrs(ifaddr);
     cfgStorage.Set(cfgStorage.Get().SetType(isPtP).SetState(isUP));
 
