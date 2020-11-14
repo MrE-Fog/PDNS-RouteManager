@@ -26,6 +26,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #set warnings for gcc
 if(CMAKE_COMPILER_IS_GNUCXX)
+	message(STATUS "Applying extra flags for GCC compiler")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -Wextra -Wshadow \
 		-Wstrict-overflow=5 -Wwrite-strings -Woverlength-strings -Winit-self -Wmissing-include-dirs \
 		-Wcast-qual -Wcast-align -Wconversion -Wlogical-op -Wold-style-cast\
