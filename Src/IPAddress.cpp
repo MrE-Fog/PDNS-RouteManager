@@ -20,6 +20,22 @@ IPAddress::RawIP::RawIP()
     std::memset(reinterpret_cast<void*>(data),0,IP_ADDR_LEN);
 }
 
+IPAddress::RawIP::RawIP(const sockaddr* const sa) : RawIP()
+{
+    if(sa->sa_family==AF_INET6)
+    {
+        sockaddr_in6 sa_in6;
+        std::memcpy(reinterpret_cast<void*>(&sa_in6),reinterpret_cast<const void*>(sa),sizeof(sockaddr_in6));
+        std::memcpy(reinterpret_cast<void*>(data),reinterpret_cast<const void*>(&(sa_in6.sin6_addr)),IPV6_ADDR_LEN);
+    }
+    else
+    {
+        sockaddr_in sa_in;
+        std::memcpy(reinterpret_cast<void*>(&sa_in),reinterpret_cast<const void*>(sa),sizeof(sockaddr_in));
+        std::memcpy(reinterpret_cast<void*>(data),reinterpret_cast<const void*>(&(sa_in.sin_addr)),IPV4_ADDR_LEN);
+    }
+}
+
 IPAddress::RawIP::RawIP(const void* const source, const size_t len) : RawIP()
 {
     std::memcpy(reinterpret_cast<void*>(data),source,len>IP_ADDR_LEN?IP_ADDR_LEN:len);
@@ -40,9 +56,7 @@ IPAddress::IPAddress():
 IPAddress::IPAddress(const sockaddr* const sa):
     isValid(sa->sa_family==AF_INET||sa->sa_family==AF_INET6),
     isV6(sa->sa_family==AF_INET6),
-    ip(!isValid?RawIP():RawIP(isV6?reinterpret_cast<const void*>(&((reinterpret_cast<const sockaddr_in6*>(sa))->sin6_addr)):
-                                   reinterpret_cast<const void*>(&((reinterpret_cast<const sockaddr_in*>(sa))->sin_addr)),
-                              isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN))
+    ip(!isValid?RawIP():RawIP(sa))
 {
 }
 

@@ -44,6 +44,7 @@ class IPAddress
         struct RawIP
         {
             RawIP();
+            RawIP(const sockaddr* const sa);
             RawIP(const void * const source, const size_t len);
             RawIP(int af, const char * const ip);
             unsigned char data[IP_ADDR_LEN];
