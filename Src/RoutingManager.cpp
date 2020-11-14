@@ -25,7 +25,7 @@ struct RouteMsg
         unsigned char data[64];
 };
 
-RoutingManager::RoutingManager(ILogger &_logger, const std::string &_ifname, const IPAddress &_gateway4, const IPAddress &_gateway6, const uint _extraTTL, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric, const int _addRetryCount):
+RoutingManager::RoutingManager(ILogger &_logger, const std::string &_ifname, const IPAddress &_gateway4, const IPAddress &_gateway6, const unsigned int _extraTTL, const int _mgIntervalSec, const int _mgPercent, const int _metric, const int _ksMetric, const int _addRetryCount):
     logger(_logger),
     ifname(_ifname),
     gateway4(_gateway4),
@@ -305,7 +305,7 @@ void RoutingManager::_ProcessStaleRoutes()
     }
 }
 
-void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
+void RoutingManager::InsertRoute(const IPAddress& dest, unsigned int ttl)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     auto expirationTime=curTime.load()+ttl+extraTTL;

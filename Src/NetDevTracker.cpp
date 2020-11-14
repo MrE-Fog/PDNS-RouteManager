@@ -218,8 +218,8 @@ void NetDevTracker::Worker()
                         dest.Set(IPAddress(rth));
                     else if(rth->rta_type==RTA_OIF)
                     {
-                        uint ifIdx=0;
-                        memcpy((void*)&ifIdx,RTA_DATA(rth),sizeof(uint));
+                        unsigned int ifIdx=0;
+                        memcpy((void*)&ifIdx,RTA_DATA(rth),sizeof(unsigned int));
                         if(if_indextoname(ifIdx,rt_ifname)==nullptr)
                             logger.Warning()<<"Failed to decode interface name while parsing route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<" notification:"<<strerror(errno)<<std::endl;
                     }

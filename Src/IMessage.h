@@ -41,10 +41,10 @@ class INetDevUpdateMessage : public IMessage
 class IRouteRequestMessage : public IMessage
 {
     protected:
-        IRouteRequestMessage(const IPAddress &_ip, const uint _ttl):IMessage(MSG_ROUTE_REQUEST),ip(_ip),ttl(_ttl){}
+        IRouteRequestMessage(const IPAddress &_ip, const unsigned int _ttl):IMessage(MSG_ROUTE_REQUEST),ip(_ip),ttl(_ttl){}
     public:
         const IPAddress &ip;
-        const uint ttl;
+        const unsigned int ttl;
 };
 
 class IRouteAddedMessage : public IMessage

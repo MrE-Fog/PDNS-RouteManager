@@ -22,7 +22,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         const std::string ifname;
         const IPAddress gateway4;
         const IPAddress gateway6;
-        const uint extraTTL;
+        const unsigned int extraTTL;
         const int mgIntervalSec;
         const int mgPercent;
         const int metric; //must be int, according to rtnetlink.7
@@ -43,7 +43,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         std::multimap<uint64_t,IPAddress> pendingExpires; //routes sorted by expiration time, used by background management worker to decide what route to remove
         //service methods that will use opLock internally
         void ManageRoutes();
-        void InsertRoute(const IPAddress &dest, uint ttl);
+        void InsertRoute(const IPAddress &dest, unsigned int ttl);
         void ConfirmRouteAdd(const IPAddress &dest);
         void ConfirmRouteDel(const IPAddress &dest);
         void ProcessNetDevUpdate(const InterfaceConfig &newConfig);
@@ -54,7 +54,7 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         void _ProcessRoute(const IPAddress &ip, const bool blackhole, const bool isAddRequest);
         void _ProcessStaleRoutes();
     public:
-        RoutingManager(ILogger &logger, const std::string &ifname, const IPAddress &gateway4, const IPAddress &gateway6, const uint extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric, const int addRetryCount);
+        RoutingManager(ILogger &logger, const std::string &ifname, const IPAddress &gateway4, const IPAddress &gateway6, const unsigned int extraTTL, const int mgIntervalSec, const int mgPercent, const int metric, const int ksMetric, const int addRetryCount);
         //WorkerBase
         void Worker() final;
         void OnShutdown() final;
