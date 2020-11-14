@@ -15,7 +15,7 @@
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 class RouteRequestMessage: public IRouteRequestMessage { public: RouteRequestMessage(const IPAddress &_ip, const unsigned int _ttl):IRouteRequestMessage(_ip,_ttl){} };
 
-DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const IPAddress _listenAddr, const int _port, const bool _useByteSwap):
+DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const struct timeval _timeout, const IPAddress _listenAddr, const int _port, const bool _useByteSwap):
     logger(_logger),
     sender(_sender),
     timeout(_timeout),
