@@ -6,6 +6,7 @@
 #include "IMessageSender.h"
 
 #include <atomic>
+#include <sys/time.h>
 
 class NetDevTracker final : public WorkerBase
 {

@@ -12,6 +12,7 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
+#include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>

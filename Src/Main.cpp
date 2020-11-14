@@ -16,6 +16,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <sys/time.h>
+
 void usage(const std::string &self)
 {
     std::cerr<<"Usage: "<<self<<" [parameters]"<<std::endl;
