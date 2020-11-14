@@ -157,12 +157,21 @@ void RoutingManager::_ProcessPendingInserts()
     //refuse to do anything if netlink socket is not initialized
     if(!started)
         return;
-    if(ifCfg.Get().isUp)
+
+    //if config is unavailable - do nothing
+    auto cfg=ifCfg.Get();
+    if(!cfg.isUp)
+        return;
+
+    auto ipv4Avail=cfg.isIPV4Avail();
+    auto ipv6Avail=cfg.isIPV6Avail();
+
+    if(ipv4Avail||ipv6Avail)
     {
         //get list of expired pendingRetries
         std::vector<IPAddress> expiredRetries;
         for (auto const &el : pendingRetries)
-            if(el.second>=addRetryCount)
+            if(el.second>=addRetryCount&&((!el.first.isV6&&ipv4Avail)||(el.first.isV6&&ipv6Avail)))
                 expiredRetries.push_back(el.first);
         //consider all expired retries as activated - we do all we can to install that routes
         for (auto const &el : expiredRetries)
@@ -175,18 +184,17 @@ void RoutingManager::_ProcessPendingInserts()
     //re-add pending routes
     for (auto const &el : pendingInserts)
     {
-        //push blackhole route in any case, to make the killswitch that will work if tracked-interface is down
+        if((!el.first.isV6&&!ipv4Avail)||(el.first.isV6&&!ipv6Avail))
+            continue;
+        //(re)push blackhole route to make the killswitch that will work if tracked-interface is down
         _ProcessRoute(el.first,true,true);
-        if(ifCfg.Get().isUp)
-        {
-            //increase retry-counter
-            auto rIT=pendingRetries.find(el.first);
-            auto insertTry=(rIT==pendingRetries.end())?2:rIT->second+1;
-            pendingRetries[el.first]=insertTry;
-            //push actual route-rule only if network is running
-            logger.Info()<<"Retrying push routing rule for: "<<el.first<<" try: "<<insertTry<<std::endl;
-            _ProcessRoute(el.first,false,true);
-        }
+        //increase retry-counter
+        auto rIT=pendingRetries.find(el.first);
+        auto insertTry=(rIT==pendingRetries.end())?2:rIT->second+1;
+        pendingRetries[el.first]=insertTry;
+        //push actual route-rule only if network is running
+        logger.Info()<<"Retrying push routing rule for: "<<el.first<<" try: "<<insertTry<<std::endl;
+        _ProcessRoute(el.first,false,true);
     }
 }
 
@@ -323,12 +331,15 @@ void RoutingManager::InsertRoute(const IPAddress& dest, uint ttl)
     {
         //push blackhole route regardless of network state
         _ProcessRoute(dest,true,true);
+        auto cfg=ifCfg.Get();
         //push new route immediately, only if network is up and running
-        if(ifCfg.Get().isUp)
+        if(cfg.isUp&&((!dest.isV6&&cfg.isIPV4Avail())||(dest.isV6&&cfg.isIPV6Avail())))
         {
             logger.Info()<<"Pushing new routing rule for: "<<dest<<" with expiration time:"<<expirationTime<<std::endl;
             _ProcessRoute(dest,false,true);
         }
+        else
+            logger.Info()<<"Delaying push new routing rule for: "<<dest<<" with expiration time:"<<expirationTime<<std::endl;
     }
 
     //add new pending route, or update it's expiration time
