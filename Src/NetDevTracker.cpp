@@ -62,7 +62,7 @@ void NetDevTracker::Worker()
     nlAddr.nl_family=AF_NETLINK;
     nlAddr.nl_groups=RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR | RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_ROUTE;
 
-    if (bind(sock, (sockaddr *)&nlAddr, sizeof(nlAddr)) == -1)
+    if (bind(sock, reinterpret_cast<sockaddr*>(&nlAddr), sizeof(nlAddr)) == -1)
     {
         HandleError(errno,"Failed to bind to netlink socket: ");
         return;
@@ -159,7 +159,7 @@ void NetDevTracker::Worker()
         }
 
         //process message
-        for (auto *nh = (nlmsghdr*)buf; NLMSG_OK (nh, len) && nh->nlmsg_type != NLMSG_DONE; nh = NLMSG_NEXT (nh, len))
+        for (auto *nh = reinterpret_cast<nlmsghdr*>(buf); NLMSG_OK (nh, len) && nh->nlmsg_type != NLMSG_DONE; nh = NLMSG_NEXT (nh, len))
         {
             if (nh->nlmsg_type == NLMSG_ERROR)
             {
@@ -168,7 +168,7 @@ void NetDevTracker::Worker()
             }
             else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK)
             {
-                auto *ifl = (ifinfomsg*)NLMSG_DATA(nh);
+                auto *ifl = reinterpret_cast<ifinfomsg*>(NLMSG_DATA(nh));
                 char msg_ifname[IFNAMSIZ]={};
                 if_indextoname(ifl->ifi_index, msg_ifname);
                 if(std::strncmp(ifname.c_str(),msg_ifname,IFNAMSIZ)!=0)
@@ -180,7 +180,7 @@ void NetDevTracker::Worker()
             }
             else if (nh->nlmsg_type == RTM_NEWADDR || nh->nlmsg_type == RTM_DELADDR)
             {
-                auto *ifa = (ifaddrmsg*)NLMSG_DATA(nh);
+                auto *ifa = reinterpret_cast<ifaddrmsg*>(NLMSG_DATA(nh));
                 char msg_ifname[IFNAMSIZ]={};
                 if_indextoname(ifa->ifa_index, msg_ifname);
                 if(std::strncmp(ifname.c_str(),msg_ifname,IFNAMSIZ)!=0)
@@ -203,7 +203,7 @@ void NetDevTracker::Worker()
             }
             else if (nh->nlmsg_type == RTM_NEWROUTE || nh->nlmsg_type == RTM_DELROUTE)
             {
-                auto *rtm = (rtmsg*)NLMSG_DATA(nh);
+                auto *rtm = reinterpret_cast<rtmsg*>(NLMSG_DATA(nh));
                 //we only need to track routes with these properties
                 if((rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)||rtm->rtm_table!=RT_TABLE_MAIN||rtm->rtm_scope!=RT_SCOPE_UNIVERSE||rtm->rtm_type!=RTN_UNICAST||rtm->rtm_protocol!=RTPROT_STATIC)
                     continue;
@@ -220,12 +220,12 @@ void NetDevTracker::Worker()
                     else if(rth->rta_type==RTA_OIF)
                     {
                         unsigned int ifIdx=0;
-                        memcpy((void*)&ifIdx,RTA_DATA(rth),sizeof(unsigned int));
+                        memcpy(reinterpret_cast<void*>(&ifIdx),RTA_DATA(rth),sizeof(unsigned int));
                         if(if_indextoname(ifIdx,rt_ifname)==nullptr)
                             logger.Warning()<<"Failed to decode interface name while parsing route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<" notification:"<<strerror(errno)<<std::endl;
                     }
                     else if(rth->rta_type==RTA_PRIORITY)
-                        memcpy((void*)&rt_metric,RTA_DATA(rth),sizeof(int));
+                        memcpy(reinterpret_cast<void*>(&rt_metric),RTA_DATA(rth),sizeof(int));
                 }
                 if(metric!=rt_metric||std::strncmp(ifname.c_str(),rt_ifname,IFNAMSIZ)!=0)
                     continue; //metric/priority or interface name not matched
