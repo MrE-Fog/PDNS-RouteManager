@@ -21,7 +21,7 @@ class NetDevUpdateMessage: public INetDevUpdateMessage { public: NetDevUpdateMes
 class RouteAddedMessage: public IRouteAddedMessage { public: RouteAddedMessage(const IPAddress &_ip):IRouteAddedMessage(_ip){} };
 class RouteRemovedMessage: public IRouteRemovedMessage { public: RouteRemovedMessage(const IPAddress &_ip):IRouteRemovedMessage(_ip){} };
 
-NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const std::string &_ifname, const struct timeval _timeout, const int _metric):
+NetDevTracker::NetDevTracker(ILogger &_logger, IMessageSender &_sender, const std::string &_ifname, const timeval _timeout, const int _metric):
     ifname(_ifname),
     timeout(_timeout),
     metric(_metric),
