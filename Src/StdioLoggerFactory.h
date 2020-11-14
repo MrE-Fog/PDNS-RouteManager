@@ -8,7 +8,7 @@
 class StdioLoggerFactory
 {
     private:
-        std::atomic<int> maxNameWD;
+        std::atomic<unsigned int> maxNameWD;
         std::mutex stdioLock;
         double creationTime;
     public:

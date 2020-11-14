@@ -11,10 +11,10 @@ class StdioLogger : public ILogger
     private:
         const std::string name;
         const double &initialTime;
-        std::atomic<int> &nameWD;
+        std::atomic<unsigned int> &nameWD;
         std::mutex &extLock;
     protected:
-        StdioLogger(const std::string &name, const double &initialTime, std::atomic<int> &nameWD, std::mutex &extLock);
+        StdioLogger(const std::string &name, const double &initialTime, std::atomic<unsigned int> &nameWD, std::mutex &extLock);
     public:
         LogWriter Info() final;
         LogWriter Warning() final;

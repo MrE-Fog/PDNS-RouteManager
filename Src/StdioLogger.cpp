@@ -2,7 +2,7 @@
 
 #include "LogWriter.h"
 
-StdioLogger::StdioLogger(const std::string &_name, const double &_initialTime, std::atomic<int> &_nameWD, std::mutex &_extLock):
+StdioLogger::StdioLogger(const std::string &_name, const double &_initialTime, std::atomic<unsigned int> &_nameWD, std::mutex &_extLock):
     name(_name),
     initialTime(_initialTime),
     nameWD(_nameWD),
@@ -14,7 +14,7 @@ static double GetTimeMark()
 {
     timespec time={};
     clock_gettime(CLOCK_MONOTONIC,&time);
-    return (double)time.tv_sec+(double)time.tv_nsec/(double)1000000000L;
+    return static_cast<double>(time.tv_sec)+static_cast<double>(time.tv_nsec)/1000000000.;
 }
 
 LogWriter StdioLogger::Info()

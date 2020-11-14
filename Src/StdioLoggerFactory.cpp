@@ -5,7 +5,7 @@
 class FinalStdioLogger final : public StdioLogger
 {
     public:
-        FinalStdioLogger(const std::string &_name, const double &_time, std::atomic<int> &_nameWD, std::mutex &_extLock): StdioLogger(_name, _time, _nameWD, _extLock) {};
+        FinalStdioLogger(const std::string &_name, const double &_time, std::atomic<unsigned int> &_nameWD, std::mutex &_extLock): StdioLogger(_name, _time, _nameWD, _extLock) {};
 };
 
 StdioLoggerFactory::StdioLoggerFactory()
@@ -13,13 +13,13 @@ StdioLoggerFactory::StdioLoggerFactory()
     maxNameWD.store(1);
     timespec time={};
     clock_gettime(CLOCK_MONOTONIC,&time);
-    creationTime=(double)time.tv_sec+(double)time.tv_nsec/(double)1000000000L;
+    creationTime=static_cast<double>(time.tv_sec)+static_cast<double>(time.tv_nsec)/1000000000.;
 }
 
 ILogger * StdioLoggerFactory::CreateLogger(const std::string &name)
 {
-    if(name.length()>(unsigned)maxNameWD.load())
-        maxNameWD.store((signed)name.length());
+    if(name.length()>maxNameWD.load())
+        maxNameWD.store(static_cast<unsigned int>(name.length()));
     return new FinalStdioLogger(name,creationTime,maxNameWD,stdioLock);
 }
 
