@@ -28,7 +28,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_COMPILER_IS_GNUCXX)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -Wextra -Wshadow \
 		-Wstrict-overflow=5 -Wwrite-strings -Woverlength-strings -Winit-self -Wmissing-include-dirs \
-		-Wcast-qual -Wcast-align -Wconversion -Wlogical-op \
+		-Wcast-qual -Wcast-align -Wconversion -Wlogical-op -Wold-style-cast\
 		-Wpacked -Wredundant-decls -Wno-inline -Wdisabled-optimization -Wfloat-equal -Wswitch-default")
 endif()
 
