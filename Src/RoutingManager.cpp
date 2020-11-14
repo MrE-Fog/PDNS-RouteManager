@@ -364,7 +364,7 @@ void RoutingManager::ConfirmRouteDel(const IPAddress &dest)
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
 {
-    return (!shutdownPending.load())&&(msgType==MSG_NETDEV_UPDATE||msgType==MSG_ROUTE_REQUEST||msgType==MSG_ROUTE_ADDED||msgType==MSG_ROUTE_REMOVED||msgType==MSG_INIT_ROUTES);
+    return (!shutdownPending.load())&&(msgType==MSG_NETDEV_UPDATE||msgType==MSG_ROUTE_REQUEST||msgType==MSG_ROUTE_ADDED||msgType==MSG_ROUTE_REMOVED);
 }
 
 //this logic executed from thread emitting the messages, and must be internally locked
@@ -394,12 +394,6 @@ void RoutingManager::OnMessage(const IMessage& message)
     {
         auto rmMsg=static_cast<const IRouteRemovedMessage&>(message);
         ConfirmRouteDel(rmMsg.ip);
-        return;
-    }
-
-    if(message.msgType==MSG_INIT_ROUTES)
-    {
-        //TODO: install initial routes-list early after startup
         return;
     }
 }

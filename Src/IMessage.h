@@ -11,7 +11,7 @@ enum MsgType
     MSG_ROUTE_REQUEST,
     MSG_ROUTE_ADDED,
     MSG_ROUTE_REMOVED,
-    MSG_INIT_ROUTES,
+    MSG_SAVE_ROUTE,
 };
 
 class IMessage
@@ -61,14 +61,6 @@ class IRouteRemovedMessage : public IMessage
         IRouteRemovedMessage(const IPAddress &_ip):IMessage(MSG_ROUTE_REMOVED),ip(_ip){}
     public:
         const IPAddress &ip;
-};
-
-class IInitRoutesMessage : public IMessage
-{
-    protected:
-        IInitRoutesMessage(const std::vector<IPAddress> &_ips):IMessage(MSG_ROUTE_REMOVED),ips(_ips){}
-    public:
-        const std::vector<IPAddress> &ips;
 };
 
 #endif // IMESSAGE_H

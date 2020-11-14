@@ -37,6 +37,7 @@ void usage(const std::string &self)
     std::cerr<<"    -mi <seconds> interval to run expired route management task, 5 by default."<<std::endl;
     std::cerr<<"    -mp <percent> maximum percent of expired routes removed at once."<<std::endl;
     std::cerr<<"    -mr <retries> maximum retries when trying to install new route"<<std::endl;
+    std::cerr<<"  TODO: save and restore active routes to backup file for crash recovery"<<std::endl;
     std::cerr<<"    -fr <filename> file with backup of current routes, used for crash recover"<<std::endl;
     std::cerr<<"    -fi <seconds> approximate interval between attempting to perform save"<<std::endl;
 }

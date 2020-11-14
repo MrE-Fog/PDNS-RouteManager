@@ -4,10 +4,14 @@
 #include "ILogger.h"
 #include "IMessageSubscriber.h"
 #include "WorkerBase.h"
+#include "IPAddress.h"
 
 #include <atomic>
 #include <mutex>
+#include <unordered_map>
+#include <queue>
 
+//TODO: not complete
 class StateSaver : public IMessageSubscriber, public WorkerBase
 {
     private:
@@ -17,6 +21,9 @@ class StateSaver : public IMessageSubscriber, public WorkerBase
         const int sleepMS;
         std::atomic<bool> shutdownRequested;
         std::mutex opLock;
+        int state;
+        std::unordered_map<IPAddress,std::pair<uint64_t,bool>> routes;
+        void SaveRoutes(int routeSaveCount);
     public:
         StateSaver(ILogger &logger, const std::string &filename, const int saveInterval, const int sleepMS);
         //WorkerBase
