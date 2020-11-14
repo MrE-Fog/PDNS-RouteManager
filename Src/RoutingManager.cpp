@@ -16,7 +16,7 @@
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 
-//should be a POD type
+//MUST be a POD type
 struct RouteMsg
 {
     public:
@@ -136,20 +136,25 @@ void RoutingManager::ManageRoutes()
     _ProcessStaleRoutes();
 }
 
-#define NLMSG_TAIL(nmsg) ( reinterpret_cast<rtattr*>((reinterpret_cast<unsigned char*>(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)) )
+#define NLMSG_TAIL(nmsg) ((reinterpret_cast<unsigned char*>(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len))
 
-static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, size_t alen)
+static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, size_t dataLen)
 {
-    unsigned short len = static_cast<unsigned short>(RTA_LENGTH(alen));
-    rtattr *rta;
-    if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > sizeof(RouteMsg))
-        exit(10); //should not happen normally
-    rta = NLMSG_TAIL(n);
-    rta->rta_type=type;
-    rta->rta_len=len;
-    if (alen>0)
-        memcpy(RTA_DATA(rta), data, alen);
-    n->nlmsg_len=NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(len);
+    unsigned short rtaLen = static_cast<unsigned short>(RTA_LENGTH(dataLen));
+    //check that we have place to add new attribute
+    if ((NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(rtaLen))>sizeof(RouteMsg))
+        exit(10); //should not happen if RouteMsg::data is big enough
+    //create header for new attribute
+    rtattr rtaHDR;
+    rtaHDR.rta_type=type;
+    rtaHDR.rta_len=rtaLen;
+    //copy attribute header to the proper position at the tail of RouteMsg
+    auto tail=NLMSG_TAIL(n);
+    memcpy(reinterpret_cast<void*>(tail),reinterpret_cast<void*>(&rtaHDR),sizeof(rtattr));
+    //copy attribute data after the header
+    memcpy(RTA_DATA(tail), data, dataLen);
+    //set new total lenght nlmsghdr header
+    n->nlmsg_len=NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(rtaLen);
 }
 
 void RoutingManager::_ProcessPendingInserts()
