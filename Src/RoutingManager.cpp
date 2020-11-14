@@ -63,7 +63,7 @@ bool RoutingManager::Startup()
     nlAddr.nl_family=AF_NETLINK;
     nlAddr.nl_groups=0;
 
-    if (bind(sock, (sockaddr *)&nlAddr, sizeof(nlAddr)) == -1)
+    if (bind(sock, reinterpret_cast<sockaddr*>(&nlAddr), sizeof(nlAddr)) == -1)
     {
         logger.Error()<<"Failed to bind to netlink socket: "<<strerror(errno)<<std::endl;
         return false;
@@ -101,8 +101,8 @@ uint64_t RoutingManager::_UpdateCurTime()
 {
     timespec time={};
     clock_gettime(CLOCK_MONOTONIC,&time);
-    curTime.store((uint64_t)(unsigned)time.tv_sec);
-    return (uint64_t)(unsigned)time.tv_sec;
+    curTime.store(static_cast<uint64_t>(static_cast<unsigned>(time.tv_sec)));
+    return static_cast<uint64_t>(static_cast<unsigned>(time.tv_sec));
 }
 
 void RoutingManager::Worker()
@@ -113,7 +113,7 @@ void RoutingManager::Worker()
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         auto now=_UpdateCurTime();
-        if(now-prev>=(unsigned)mgIntervalSec)
+        if(now-prev>=static_cast<uint64_t>(mgIntervalSec))
         {
             prev=now;
             ManageRoutes();
@@ -136,17 +136,17 @@ void RoutingManager::ManageRoutes()
     _ProcessStaleRoutes();
 }
 
-#define NLMSG_TAIL(nmsg) ((struct rtattr *) (((unsigned char *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
+#define NLMSG_TAIL(nmsg) ( reinterpret_cast<rtattr*>((reinterpret_cast<unsigned char*>(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)) )
 
 static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, size_t alen)
 {
-    unsigned short len = (short)(RTA_LENGTH(alen));
+    unsigned short len = static_cast<unsigned short>(RTA_LENGTH(alen));
     rtattr *rta;
     if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > sizeof(RouteMsg))
         exit(10); //should not happen normally
     rta = NLMSG_TAIL(n);
     rta->rta_type=type;
-    rta->rta_len=(short)len;
+    rta->rta_len=len;
     if (alen>0)
         memcpy(RTA_DATA(rta), data, alen);
     n->nlmsg_len=NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(len);
@@ -275,7 +275,7 @@ void RoutingManager::_ProcessStaleRoutes()
     auto expCnt=pendingExpires.size();
     if(expCnt<1)
         return;
-    auto remCnt=(int)((float)expCnt/100.0f*(float)mgPercent);
+    auto remCnt=static_cast<int>(static_cast<float>(expCnt)/100.0f*static_cast<float>(mgPercent));
     if(remCnt<1)
         remCnt=1;
     auto curMark=curTime.load();
