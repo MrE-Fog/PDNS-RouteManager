@@ -6,10 +6,10 @@
 static int DetectIPVer(const char* const ip)
 {
     unsigned char tmp[IP_ADDR_LEN]={};
-    auto check=inet_pton(AF_INET,ip,(void*)tmp);
+    auto check=inet_pton(AF_INET,ip,reinterpret_cast<void*>(tmp));
     if(check>0)
         return 1;
-    check=inet_pton(AF_INET6,ip,(void*)tmp);
+    check=inet_pton(AF_INET6,ip,reinterpret_cast<void*>(tmp));
     if(check>0)
         return 2;
     return 0;
@@ -17,17 +17,17 @@ static int DetectIPVer(const char* const ip)
 
 IPAddress::RawIP::RawIP()
 {
-    std::memset((void*)data,0,IP_ADDR_LEN);
+    std::memset(reinterpret_cast<void*>(data),0,IP_ADDR_LEN);
 }
 
 IPAddress::RawIP::RawIP(const void* const source, const size_t len) : RawIP()
 {
-    std::memcpy((void*)data,source,len>IP_ADDR_LEN?IP_ADDR_LEN:len);
+    std::memcpy(reinterpret_cast<void*>(data),source,len>IP_ADDR_LEN?IP_ADDR_LEN:len);
 }
 
 IPAddress::RawIP::RawIP(int af, const char * const ip) : RawIP()
 {
-    inet_pton(af,ip,(void*)data);
+    inet_pton(af,ip,reinterpret_cast<void*>(data));
 }
 
 IPAddress::IPAddress():
@@ -40,7 +40,9 @@ IPAddress::IPAddress():
 IPAddress::IPAddress(const sockaddr* const sa):
     isValid(sa->sa_family==AF_INET||sa->sa_family==AF_INET6),
     isV6(sa->sa_family==AF_INET6),
-    ip(!isValid?RawIP():RawIP(isV6?(const void*)&((reinterpret_cast<const sockaddr_in6*>(sa))->sin6_addr):(const void*)&((reinterpret_cast<const sockaddr_in*>(sa))->sin_addr),isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN))
+    ip(!isValid?RawIP():RawIP(isV6?reinterpret_cast<const void*>(&((reinterpret_cast<const sockaddr_in6*>(sa))->sin6_addr)):
+                                   reinterpret_cast<const void*>(&((reinterpret_cast<const sockaddr_in*>(sa))->sin_addr)),
+                              isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN))
 {
 }
 
@@ -78,13 +80,13 @@ void IPAddress::ToSA(void* const targetSA) const
         return;
     if(isV6)
     {
-        auto target=(sockaddr_in6*)targetSA;
-        std::memcpy((void*)&(target->sin6_addr),(const void*)ip.data,IPV6_ADDR_LEN);
+        auto target=reinterpret_cast<sockaddr_in6*>(targetSA);
+        std::memcpy(reinterpret_cast<void*>(&(target->sin6_addr)),reinterpret_cast<const void*>(ip.data),IPV6_ADDR_LEN);
     }
     else
     {
-        auto target=(sockaddr_in*)targetSA;
-        std::memcpy((void*)&(target->sin_addr),(const void*)ip.data,IPV4_ADDR_LEN);
+        auto target=reinterpret_cast<sockaddr_in*>(targetSA);
+        std::memcpy(reinterpret_cast<void*>(&(target->sin_addr)),reinterpret_cast<const void*>(ip.data),IPV4_ADDR_LEN);
     }
 }
 
@@ -110,10 +112,10 @@ size_t IPAddress::GetHashCode() const
     int shift=rSz-1;
     for(auto i=0;i<IP_ADDR_LEN;++i)
     {
-        result^=(((size_t)ip.data[i])<<(8*shift));
+        result^=((static_cast<size_t>(ip.data[i]))<<(8*shift));
         shift--;
         if(shift<0)
-          shift=rSz-1;
+            shift=rSz-1;
     }
     return result;
 }
