@@ -28,7 +28,7 @@ DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeva
 
 uint16_t DNSReceiver::DecodeHeader(const void * const data) const
 {
-    return useByteSwap?(uint16_t)((*((const uint16_t*)data)&0x00FF)<<8|(*((const uint16_t*)data)&0xFF00)>>8):*((const uint16_t*)data);
+    return useByteSwap?static_cast<uint16_t>((*(reinterpret_cast<const uint16_t*>(data))&0x00FF)<<8|(*(reinterpret_cast<const uint16_t*>(data))&0xFF00)>>8):*(reinterpret_cast<const uint16_t*>(data));
 }
 
 void DNSReceiver::HandleError(const std::string &message)
@@ -110,17 +110,17 @@ void DNSReceiver::Worker()
             if(listenAddr.isV6)
             {
                 ipv6Addr.sin6_family=AF_INET6;
-                ipv6Addr.sin6_port=htons((unsigned short)port);
+                ipv6Addr.sin6_port=htons(static_cast<uint16_t>(port));
                 listenAddr.ToSA(&ipv6Addr);
-                target=(sockaddr*)&ipv6Addr;
+                target=reinterpret_cast<sockaddr*>(&ipv6Addr);
                 len=sizeof(sockaddr_in6);
             }
             else
             {
                 ipv4Addr.sin_family=AF_INET;
-                ipv4Addr.sin_port=htons((unsigned short)port);
+                ipv4Addr.sin_port=htons(static_cast<uint16_t>(port));
                 listenAddr.ToSA(&ipv4Addr);
-                target=(sockaddr*)&ipv4Addr;
+                target=reinterpret_cast<sockaddr*>(&ipv4Addr);
                 len=sizeof(sockaddr_in);
             }
 
@@ -165,7 +165,7 @@ void DNSReceiver::Worker()
                 //accept single connection
                 sockaddr_storage cAddr;
                 socklen_t cAddrSz = sizeof(cAddr);
-                auto cSockFd=accept(lSockFd,(sockaddr*)&cAddr,&cAddrSz);
+                auto cSockFd=accept(lSockFd,reinterpret_cast<sockaddr*>(&cAddr),&cAddrSz);
                 if(cSockFd<1)
                 {
                     logger.Warning()<<"Failed to accept connection: "<<strerror(errno)<<std::endl;
@@ -201,7 +201,7 @@ void DNSReceiver::Worker()
                         return;
                     }
                     //read data
-                    auto dataRead=read(cSockFd,(void*)(data+dataSize-dataLeft),dataLeft);
+                    auto dataRead=read(cSockFd,reinterpret_cast<void*>(data+dataSize-dataLeft),dataLeft);
                     if(dataRead==0)
                     {
                         logger.Info()<<"Client disconnected"<<std::endl;
@@ -228,7 +228,7 @@ void DNSReceiver::Worker()
                     {//decode payload, setup read of next data-header
                         //decode payload
                         PBDNSMessage message;
-                        if(!message.ParseFromArray(data,(int)dataSize))
+                        if(!message.ParseFromArray(data,static_cast<int>(dataSize)))
                             logger.Warning()<<"Failed to decode payload of size "<<dataSize<<std::endl;
                         else if(!message.has_response() || message.response().rrs_size()<1)
                             logger.Warning()<<"No valid response or dns resource records provided in dnsdist message"<<std::endl;
