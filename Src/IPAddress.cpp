@@ -40,7 +40,7 @@ IPAddress::IPAddress():
 IPAddress::IPAddress(const sockaddr* const sa):
     isValid(sa->sa_family==AF_INET||sa->sa_family==AF_INET6),
     isV6(sa->sa_family==AF_INET6),
-    ip(!isValid?RawIP():RawIP(isV6?(const void*)&(((const sockaddr_in6*)sa)->sin6_addr):(const void*)&(((const sockaddr_in*)sa)->sin_addr),isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN))
+    ip(!isValid?RawIP():RawIP(isV6?(const void*)&((reinterpret_cast<const sockaddr_in6*>(sa))->sin6_addr):(const void*)&((reinterpret_cast<const sockaddr_in*>(sa))->sin_addr),isV6?IPV6_ADDR_LEN:IPV4_ADDR_LEN))
 {
 }
 
