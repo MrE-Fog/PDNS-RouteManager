@@ -24,7 +24,7 @@ DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeva
     shutdownPending.store(false);
 }
 
-uint16_t DNSReceiver::DecodeHeader(const void * const data) const
+static uint16_t DecodeHeader(const void * const data)
 {
     uint16_t ns;
     std::memcpy(reinterpret_cast<void*>(&ns),data,sizeof(uint16_t));

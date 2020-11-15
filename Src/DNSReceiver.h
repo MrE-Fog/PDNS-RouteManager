@@ -21,7 +21,6 @@ class DNSReceiver : public WorkerBase
 
         void HandleError(int ec, const std::string& message);
         void HandleError(const std::string &message);
-        uint16_t DecodeHeader(const void * const data) const;
     public:
         DNSReceiver(ILogger &logger, IMessageSender &sender, const timeval timeout, const IPAddress listenAddr, const int port);
     protected: //WorkerBase
