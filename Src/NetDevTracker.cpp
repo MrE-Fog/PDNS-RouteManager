@@ -198,10 +198,12 @@ void NetDevTracker::Worker()
                         cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddLocalIP(IPAddress(rth)):config.DelLocalIP(IPAddress(rth)));
                     else if(rth->rta_type == IFA_BROADCAST)
                         cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddRemoteIP(IPAddress(rth)):config.DelRemoteIP(IPAddress(rth)));
-                    else if(rth->rta_type == IFA_ADDRESS && !config.isPtP)
-                        cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddLocalIP(IPAddress(rth)):config.DelLocalIP(IPAddress(rth)));
-                    else if(rth->rta_type == IFA_ADDRESS && config.isPtP)
-                        cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddRemoteIP(IPAddress(rth)):config.DelRemoteIP(IPAddress(rth)));
+                    else if(rth->rta_type == IFA_ADDRESS)
+                    {
+                        auto target=IPAddress(rth);
+                        if(target.isV6)
+                            cfgStorage.Set(nh->nlmsg_type==RTM_NEWADDR?config.AddLocalIP(target):config.DelLocalIP(target));
+                    }
                 }
             }
             else if (nh->nlmsg_type == RTM_NEWROUTE || nh->nlmsg_type == RTM_DELROUTE)
