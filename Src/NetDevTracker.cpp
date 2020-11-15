@@ -210,14 +210,14 @@ void NetDevTracker::Worker()
                 //we only need to track routes with these properties
                 if(rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)
                     continue;
-                if(rtm->rtm_table!=RT_TABLE_MAIN)
-                    continue;
-                if(rtm->rtm_scope!=RT_SCOPE_UNIVERSE)
-                    continue;
-                if(rtm->rtm_protocol!=RTPROT_STATIC)
-                    continue;
-                if(rtm->rtm_type==RTN_BLACKHOLE)
-                    continue;
+                //if(rtm->rtm_table!=RT_TABLE_MAIN)
+                //    continue;
+                //if(rtm->rtm_scope!=RT_SCOPE_UNIVERSE)
+                //    continue;
+                //if(rtm->rtm_protocol!=RTPROT_STATIC)
+                //    continue;
+                //if(rtm->rtm_type==RTN_BLACKHOLE)
+                //    continue;
                 //to identify route installed/removed by this program - we need to get following attributes
                 auto dest=ImmutableStorage<IPAddress>(IPAddress()); //destination ip address - valid ipv4 or ipv6 address
                 char rt_ifname[IFNAMSIZ]={}; //interface (must match)
@@ -239,10 +239,13 @@ void NetDevTracker::Worker()
                         memcpy(reinterpret_cast<void*>(&rt_metric),RTA_DATA(rth),sizeof(int));
                 }
                 if(metric!=rt_metric||std::strncmp(ifname.c_str(),rt_ifname,IFNAMSIZ)!=0)
+                {
+                    logger.Warning()<<"*** Do not process route "<<(nh->nlmsg_type==RTM_NEWROUTE?"ADD":"REMOVE")<<" with metric/prio: "<<metric<<"; ip:"<<dest.Get()<<"; iface: "<<rt_ifname;
                     continue; //metric/priority or interface name not matched
+                }
                 if(!dest.Get().isValid)
                 {
-                    logger.Warning()<<"No valid destination address received for route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<" notification"<<std::endl;
+                    logger.Warning()<<"No valid destination address received for route "<<(nh->nlmsg_type==RTM_NEWROUTE?"ADD":"REMOVE")<<" notification"<<std::endl;
                     continue;
                 }
                 //logger.Info()<<"Route "<<(nh->nlmsg_type==RTM_NEWROUTE?"added":"removed")<<"; ip="<<dest.Get()<<std::endl;
