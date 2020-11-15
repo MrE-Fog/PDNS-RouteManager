@@ -208,7 +208,15 @@ void NetDevTracker::Worker()
             {
                 auto *rtm = reinterpret_cast<rtmsg*>(NLMSG_DATA(nh));
                 //we only need to track routes with these properties
-                if((rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)||rtm->rtm_table!=RT_TABLE_MAIN||rtm->rtm_scope!=RT_SCOPE_UNIVERSE||rtm->rtm_type!=RTN_UNICAST||rtm->rtm_protocol!=RTPROT_STATIC)
+                if(rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)
+                    continue;
+                if(rtm->rtm_table!=RT_TABLE_MAIN)
+                    continue;
+                if(rtm->rtm_scope!=RT_SCOPE_UNIVERSE)
+                    continue;
+                if(rtm->rtm_protocol!=RTPROT_STATIC)
+                    continue;
+                if(rtm->rtm_type==RTN_BLACKHOLE)
                     continue;
                 //to identify route installed/removed by this program - we need to get following attributes
                 auto dest=ImmutableStorage<IPAddress>(IPAddress()); //destination ip address - valid ipv4 or ipv6 address
