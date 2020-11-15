@@ -145,7 +145,7 @@ void NetDevTracker::Worker()
         cfgStorage.isUpdated=false;
 
         //from man netlink.7
-        nlmsghdr buf[8192] = {};
+        nlmsghdr buf[1024] = {};
         iovec iov = { buf, sizeof(buf) };
         sockaddr_nl sa = {};
         msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
