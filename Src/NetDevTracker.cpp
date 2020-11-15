@@ -188,8 +188,6 @@ void NetDevTracker::Worker()
                 if_indextoname(ifa->ifa_index, msg_ifname);
                 if(std::strncmp(ifname.c_str(),msg_ifname,IFNAMSIZ)!=0)
                     continue; //interface name not matched
-                //mark config as updated for now, even if no changes in addresses was performed
-                cfgStorage.isUpdated=true;
                 auto rtl = IFA_PAYLOAD(nh);
                 for (auto *rth = IFA_RTA(ifa); RTA_OK(rth, rtl); rth = RTA_NEXT(rth, rtl))
                 {
