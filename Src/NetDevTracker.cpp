@@ -208,8 +208,8 @@ void NetDevTracker::Worker()
             {
                 auto *rtm = reinterpret_cast<rtmsg*>(NLMSG_DATA(nh));
                 //we only need to track routes with these properties
-                if(rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)
-                    continue;
+                //if(rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)
+                //    continue;
                 //if(rtm->rtm_table!=RT_TABLE_MAIN)
                 //    continue;
                 //if(rtm->rtm_scope!=RT_SCOPE_UNIVERSE)
