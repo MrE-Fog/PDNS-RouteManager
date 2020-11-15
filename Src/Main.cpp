@@ -31,8 +31,6 @@ void usage(const std::string &self)
     std::cerr<<"    -bp <blackhole-route priority> metric/priority number for generated"<<std::endl;
     std::cerr<<"     killswitch (blackhole) protective routes, rp+1 by default."<<std::endl;
     std::cerr<<"     MUST NOT INTERFERE WITH ANY OTHER ROUTES and must be higher than -rp"<<std::endl;
-    std::cerr<<"    -s <true|false> swap bytes when decoding protobuf messages."<<std::endl;
-    std::cerr<<"     true if PDNS service is running on architecture with different endianness"<<std::endl;
     std::cerr<<"    -gw4 <ip-addr> ipv4 gateway address. not used with p-t-p interfaces"<<std::endl;
     std::cerr<<"    -gw6 <ip-addr> ipv6 gateway address. not used with p-t-p interfaces"<<std::endl;
     std::cerr<<"    -ttl <seconds> additional time interval added to route expiration-time."<<std::endl;
@@ -127,18 +125,6 @@ int main (int argc, char *argv[])
             return param_error(argv[0],"Blackhole route priority value must be > than regular route priority");
     }
 
-    //byte swap
-    bool useByteSwap=false;
-    if(args.find("-s")!=args.end())
-    {
-        if(args["-s"]=="true")
-            useByteSwap=true;
-        else if(args["-s"]=="false")
-            useByteSwap=true;
-        else
-            return param_error(argv[0],"Use swap parameter is invalid!");
-    }
-
     //gateway4
     bool gw4Set=false;
     if(args.find("-gw4")!=args.end())
@@ -216,7 +202,7 @@ int main (int argc, char *argv[])
     //dump current configuration
     mainLogger->Info()<<"Starting up";
     mainLogger->Info()<<"listening at "<<listenAddr<<" port "<<port<<"; routing via "<<args["-i"]<<" interface";
-    mainLogger->Info()<<"route prio: "<<metric<<"; blkhole-route prio: "<<ksMetric<<"; extra ttl: "<<extraTTL<<"; use byte swap: "<<(useByteSwap?"true":"false");
+    mainLogger->Info()<<"route prio: "<<metric<<"; blkhole-route prio: "<<ksMetric<<"; extra ttl: "<<extraTTL;
     mainLogger->Info()<<"ipv4 gateway: "<<(gw4Set?gateway4.ToString():std::string("not set"))<<"; ipv6 gateway: "<<(gw6Set?gateway6.ToString():std::string("not set"));
     mainLogger->Info()<<"management interval: "<<mgIntervalSec<<"; percent of routes to manage at once: "<<mgPercent<<"%; route-add max tries count: "<<addRetryCnt;
 
@@ -228,7 +214,7 @@ int main (int argc, char *argv[])
     //create main worker-instances
     RoutingManager routingMgr(*routingMgrLogger,args["-i"],gateway4,gateway6,extraTTL,mgIntervalSec,mgPercent,metric,ksMetric,addRetryCnt);
     messageBroker.AddSubscriber(routingMgr);
-    DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,listenAddr,port,useByteSwap);
+    DNSReceiver dnsReceiver(*dnsReceiverLogger,messageBroker,timeoutTv,listenAddr,port);
     NetDevTracker tracker(*trackerLogger,messageBroker,args["-i"],timeoutTv,metric);
     StateSaver saver(*saverLogger, saveFile, saveInterval, timeoutMs);
     if(!saveFile.empty())

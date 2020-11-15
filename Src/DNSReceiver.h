@@ -17,14 +17,13 @@ class DNSReceiver : public WorkerBase
         const timeval timeout;
         const IPAddress listenAddr;
         const int port;
-        const bool useByteSwap;
         std::atomic<bool> shutdownPending;
 
         void HandleError(int ec, const std::string& message);
         void HandleError(const std::string &message);
         uint16_t DecodeHeader(const void * const data) const;
     public:
-        DNSReceiver(ILogger &logger, IMessageSender &sender, const timeval timeout, const IPAddress listenAddr, const int port, const bool useByteSwap);
+        DNSReceiver(ILogger &logger, IMessageSender &sender, const timeval timeout, const IPAddress listenAddr, const int port);
     protected: //WorkerBase
         void Worker() final;
         void OnShutdown() final;

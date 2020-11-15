@@ -8,27 +8,27 @@
 #include <string>
 
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 
 class ShutdownMessage: public IShutdownMessage { public: ShutdownMessage(int _ec):IShutdownMessage(_ec){} };
 class RouteRequestMessage: public IRouteRequestMessage { public: RouteRequestMessage(const IPAddress &_ip, const unsigned int _ttl):IRouteRequestMessage(_ip,_ttl){} };
 
-DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const IPAddress _listenAddr, const int _port, const bool _useByteSwap):
+DNSReceiver::DNSReceiver(ILogger &_logger, IMessageSender &_sender, const timeval _timeout, const IPAddress _listenAddr, const int _port):
     logger(_logger),
     sender(_sender),
     timeout(_timeout),
     listenAddr(_listenAddr),
-    port(_port),
-    useByteSwap(_useByteSwap)
+    port(_port)
 {
     shutdownPending.store(false);
 }
 
 uint16_t DNSReceiver::DecodeHeader(const void * const data) const
 {
-    return useByteSwap?static_cast<uint16_t>((*(reinterpret_cast<const uint16_t*>(data))&0x00FF)<<8|(*(reinterpret_cast<const uint16_t*>(data))&0xFF00)>>8):*(reinterpret_cast<const uint16_t*>(data));
+    uint16_t ns;
+    std::memcpy(reinterpret_cast<void*>(&ns),data,sizeof(uint16_t));
+    return ntohs(ns);
 }
 
 void DNSReceiver::HandleError(const std::string &message)
