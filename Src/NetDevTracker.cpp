@@ -96,10 +96,13 @@ void NetDevTracker::Worker()
         cfgStorage.Set(cfgStorage.Get().AddLocalIP(localIP));
 
         //set remote address - either broadcast or ptp
-        if(ISPTP(ifa))
-            cfgStorage.Set(cfgStorage.Get().AddRemoteIP(IPAddress(ifa->ifa_dstaddr)));
-        else if(ISBRC(ifa)&&!localIP.isV6)
-            cfgStorage.Set(cfgStorage.Get().AddRemoteIP(IPAddress(ifa->ifa_broadaddr)));
+        if(!localIP.isV6)
+        {
+            if(ISPTP(ifa))
+                cfgStorage.Set(cfgStorage.Get().AddRemoteIP(IPAddress(ifa->ifa_dstaddr)));
+            else if(ISBRC(ifa))
+                cfgStorage.Set(cfgStorage.Get().AddRemoteIP(IPAddress(ifa->ifa_broadaddr)));
+        }
 
         //update interface flags
         isPtP|=ISPTP(ifa);
