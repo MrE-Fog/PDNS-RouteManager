@@ -49,8 +49,10 @@ class RoutingManager : public IMessageSubscriber, public WorkerBase
         void ProcessNetDevUpdate(const InterfaceConfig &newConfig);
         //internal service methods that is not using opLock.
         uint64_t _UpdateCurTime();
+        void _InvalidateActiveRoutes(const bool ipv4, const bool ipv6);
         void _ProcessPendingInserts();
         void _FinalizeRouteInsert(const IPAddress &dest);
+        void _FinalizeRouteDelete(const IPAddress &dest);
         void _ProcessRoute(const IPAddress &ip, const bool blackhole, const bool isAddRequest);
         void _ProcessStaleRoutes();
     public:

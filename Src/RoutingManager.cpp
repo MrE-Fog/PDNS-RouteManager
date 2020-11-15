@@ -4,7 +4,7 @@
 #include <chrono>
 #include <cstring>
 #include <cerrno>
-#include <vector>
+#include <forward_list>
 
 #include <unistd.h>
 #include <linux/netlink.h>
@@ -126,6 +126,9 @@ void RoutingManager::ProcessNetDevUpdate(const InterfaceConfig& newConfig)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     ifCfg.Set(newConfig); //update config
+    //TODO: if IP availability was changed to false - invalidate all routes immediately
+    auto prevConfig=ifCfg.Prev();
+    _InvalidateActiveRoutes(prevConfig.isIPV4Avail()&&!newConfig.isIPV4Avail(),prevConfig.isIPV6Avail()&&!newConfig.isIPV6Avail());
     _ProcessPendingInserts(); //trigger pending routes processing immediately
 }
 
@@ -157,6 +160,23 @@ static void AddRTA(struct nlmsghdr *n, unsigned short type, const void *data, si
     n->nlmsg_len=NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(rtaLen);
 }
 
+void RoutingManager::_InvalidateActiveRoutes(const bool ipv4, const bool ipv6)
+{
+    if(!ipv4&&!ipv6)
+        return; //nothing to invalidate
+    if(ipv4)
+        logger.Warning()<<"Invalidating active IPv4 routes";
+    if(ipv6)
+        logger.Warning()<<"Invalidating active IPv6 routes";
+    //dump current routes
+    std::forward_list<IPAddress> targets;
+    for (auto const &el : activeRoutes)
+        if((ipv6&&el.first.isV6)||(ipv4&&!el.first.isV6))
+            targets.push_front(el.first);
+    for (auto const &dest : targets)
+        _FinalizeRouteDelete(dest);
+}
+
 void RoutingManager::_ProcessPendingInserts()
 {
     //refuse to do anything if netlink socket is not initialized
@@ -174,10 +194,10 @@ void RoutingManager::_ProcessPendingInserts()
     if(ipv4Avail||ipv6Avail)
     {
         //get list of expired pendingRetries
-        std::vector<IPAddress> expiredRetries;
+        std::forward_list<IPAddress> expiredRetries;
         for (auto const &el : pendingRetries)
             if(el.second>=addRetryCount&&((!el.first.isV6&&ipv4Avail)||(el.first.isV6&&ipv6Avail)))
-                expiredRetries.push_back(el.first);
+                expiredRetries.push_front(el.first);
         //consider all expired retries as activated - we do all we can to install that routes
         for (auto const &el : expiredRetries)
         {
@@ -228,6 +248,19 @@ void RoutingManager::_FinalizeRouteInsert(const IPAddress& dest)
     }
     activeRoutes[dest]=expiration; //move rule to activeRoutes
     pendingExpires.insert({expiration,dest}); //add pending insert record, for route-management task
+}
+
+void RoutingManager::_FinalizeRouteDelete(const IPAddress &dest)
+{
+    //check for unexpected route-removal
+    auto aIT=activeRoutes.find(dest);
+    if(aIT!=activeRoutes.end())
+    {
+        logger.Warning()<<"Pending re-add for unexpectedly removed route for: "<<dest<<std::endl;
+        pendingInserts.insert({dest,aIT->second});
+        pendingRetries.erase(dest);
+        activeRoutes.erase(aIT);
+    }
 }
 
 void RoutingManager::_ProcessRoute(const IPAddress &ip, const bool blackhole, const bool isAddRequest)
@@ -367,15 +400,7 @@ void RoutingManager::ConfirmRouteDel(const IPAddress &dest)
 {
     const std::lock_guard<std::mutex> lock(opLock);
     logger.Info()<<"Processing route-removed confirmation for: "<<dest<<std::endl;
-    //check for unexpected route-removal
-    auto aIT=activeRoutes.find(dest);
-    if(aIT!=activeRoutes.end())
-    {
-        logger.Warning()<<"Pending re-add for unexpectedly removed route for: "<<dest<<std::endl;
-        pendingInserts.insert({dest,aIT->second});
-        pendingRetries.erase(dest);
-        activeRoutes.erase(aIT);
-    }
+    _FinalizeRouteDelete(dest);
 }
 
 bool RoutingManager::ReadyForMessage(const MsgType msgType)
