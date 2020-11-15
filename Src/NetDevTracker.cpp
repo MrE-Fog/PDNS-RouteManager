@@ -145,7 +145,7 @@ void NetDevTracker::Worker()
         cfgStorage.isUpdated=false;
 
         //from man netlink.7
-        nlmsghdr buf[1024] = {};
+        nlmsghdr buf[8192/sizeof(struct nlmsghdr)] = {};
         iovec iov = { buf, sizeof(buf) };
         sockaddr_nl sa = {};
         msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
@@ -207,17 +207,17 @@ void NetDevTracker::Worker()
             else if (nh->nlmsg_type == RTM_NEWROUTE || nh->nlmsg_type == RTM_DELROUTE)
             {
                 auto *rtm = reinterpret_cast<rtmsg*>(NLMSG_DATA(nh));
-                //we only need to track routes with these properties
-                //if(rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)
-                //    continue;
-                //if(rtm->rtm_table!=RT_TABLE_MAIN)
-                //    continue;
-                //if(rtm->rtm_scope!=RT_SCOPE_UNIVERSE)
-                //    continue;
-                //if(rtm->rtm_protocol!=RTPROT_STATIC)
-                //    continue;
-                //if(rtm->rtm_type==RTN_BLACKHOLE)
-                //    continue;
+                //only routes with same paramerets as ours will be qualified for further processing
+                if(rtm->rtm_family!=AF_INET&&rtm->rtm_family!=AF_INET6)
+                    continue;
+                if(rtm->rtm_table!=RT_TABLE_MAIN)
+                    continue;
+                if(rtm->rtm_scope!=RT_SCOPE_UNIVERSE)
+                    continue;
+                if(rtm->rtm_protocol!=RTPROT_STATIC)
+                    continue;
+                if(rtm->rtm_type!=RTN_UNICAST)
+                    continue;
                 //to identify route installed/removed by this program - we need to get following attributes
                 auto dest=ImmutableStorage<IPAddress>(IPAddress()); //destination ip address - valid ipv4 or ipv6 address
                 char rt_ifname[IFNAMSIZ]={}; //interface (must match)
@@ -240,7 +240,7 @@ void NetDevTracker::Worker()
                 }
                 if(metric!=rt_metric||std::strncmp(ifname.c_str(),rt_ifname,IFNAMSIZ)!=0)
                 {
-                    logger.Warning()<<"*** Do not process route "<<(nh->nlmsg_type==RTM_NEWROUTE?"ADD":"REMOVE")<<" with metric/prio: "<<metric<<"; ip:"<<dest.Get()<<"; iface: "<<rt_ifname;
+                    //logger.Warning()<<"*** Do not process route "<<(nh->nlmsg_type==RTM_NEWROUTE?"ADD":"REMOVE")<<" with metric/prio: "<<metric<<"; ip:"<<dest.Get()<<"; iface: "<<rt_ifname;
                     continue; //metric/priority or interface name not matched
                 }
                 if(!dest.Get().isValid)
