@@ -64,5 +64,5 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 add_executable(pdns-routemgr ${SOURCE_FILES} ${PROTO_SRCS} ${PROTO_HDRS})
-target_link_libraries(pdns-routemgr PRIVATE Threads::Threads ${Protobuf_LIBRARIES})
+target_link_libraries(pdns-routemgr PRIVATE atomic Threads::Threads ${Protobuf_LIBRARIES})
 install(TARGETS pdns-routemgr DESTINATION sbin)
